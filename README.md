@@ -82,15 +82,16 @@ The production frontend output is `frontend/dist`. It needs a web server with SP
 
 New commits use actual creation timestamps. No historical dates were assigned. There was no existing Git history at continuation; accumulated work was committed as meaningful source checkpoints. See `DEVELOPMENT_LOG.md` for execution details. `auralis-history.bundle`, when included with the ZIP, preserves the local Git history without packaging an entire `.git` directory.
 
-The connected integration did not expose repository creation in this environment. Do not infer that a remote exists from this README. The final verification report records synchronization status. To publish the delivered local history yourself:
+The complete source is published privately at **https://github.com/energusss/auralis**. Clone it while authenticated as an authorized GitHub user:
 
 ```powershell
-winget install --id GitHub.cli
-# Reopen PowerShell if needed so gh is on PATH.
-powershell -ExecutionPolicy Bypass -File .\scripts\publish-github.ps1
+git clone https://github.com/energusss/auralis.git
+cd auralis
 ```
 
-The helper authenticates with your GitHub CLI session, restores the supplied bundle when `.git` is absent, creates a **private** `energusss/auralis` repository, and pushes history. It does not overwrite an existing repository or origin. Review the files before publishing. If you already have an `energusss/auralis` repository, use a deliberate manual remote/branch workflow rather than force-pushing it.
+The original 13 source commits retain their exact IDs and timestamps. Later CI, repair and publication commits use actual creation timestamps. The temporary import setup is archived on `publication/bootstrap`; the application source is on `main`.
+
+The ZIP includes `auralis-history.bundle` as a portable backup of the published history. `scripts/publish-github.ps1` is an optional helper for creating a separate private repository from that bundle with authenticated GitHub CLI. It refuses to overwrite an existing origin or repository; normal use of the published project does not require that helper.
 
 ## Project map
 

@@ -22,10 +22,18 @@ The original React/Vite glass interface, Motion transitions, responsive styles, 
 
 The local .NET SDK required an environment-only process-information compatibility shim and single-node MSBuild. That shim and SDK are excluded from the deliverable. Normal Windows instructions use the standard .NET 8 SDK.
 
-Docker and PostgreSQL were absent. Installing PostgreSQL was blocked by environment filesystem/identity restrictions. PostgreSQL schema application and the complete browser-to-PostgreSQL journey remain unverified. The browser preview uses the documented client fallback catalog when the API is unreachable; no backend account persistence is simulated in the browser.
+Docker and PostgreSQL were absent. Installing PostgreSQL was blocked by environment filesystem/identity restrictions. At that stage PostgreSQL schema application was unverified. A later GitHub Actions PostgreSQL 16 service verified migrations and the real HTTP account/persistence journey; a browser-authentication journey against PostgreSQL was not run. The browser preview uses the documented client fallback catalog when the API is unreachable; no backend account persistence is simulated in the browser.
 
 ## GitHub
 
 The connected account was rechecked as `energusss`; the previous account is not the destination. `energusss/auralis` returned 404. The connector has content/commit operations but no repository-creation operation. Browser creation reaches a GitHub sign-in page. Publication requires that separate authentication (or the included authenticated GitHub CLI publishing script). Final synchronization status is recorded in `docs/VERIFICATION.md`.
 
 The final browser-authentication inspection was rejected by automatic security review because it indicated `accounts.google.com`, outside the authorized GitHub origin. No attempt was made to bypass that review. Source delivery and all unaffected verification were completed.
+
+## Publication completed
+
+After the user signed in, `energusss/auralis` was created as a private repository. The original bundle imported the exact original 13 commit objects. The Actions token could upload objects but could not update a workflow-bearing ref; the already-authorized GitHub connector completed the ref update. Temporary bootstrap commits remain on `publication/bootstrap`, separate from application history.
+
+GitHub Actions subsequently verified the standard backend build and tests and a PostgreSQL 16 HTTP persistence journey. Initial Playwright CI exposed a responsive test-selector mismatch and a real route-transition remount that cleared search input; both were repaired without redesigning the UI. Current results are in `docs/VERIFICATION.md`.
+
+Final published-code CI passed: frontend production build and 15 automated tests, 4 desktop/mobile Playwright journeys, backend build and 12 tests, plus PostgreSQL 16 migrations and HTTP persistence verification. Run: https://github.com/energusss/auralis/actions/runs/40219895569.

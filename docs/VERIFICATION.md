@@ -9,7 +9,7 @@
 | Backend build | PASS | .NET 8 API build; 0 warnings, 0 errors |
 | Backend automated tests | PASS | 12 xUnit tests including password hashes, recommendations, validation, JWT authorization, playlist ownership/order, refresh rotation/reuse, library/history/settings/profile/logout/login roundtrip |
 | PostgreSQL migrations generated | PASS | Initial migration, model snapshot and idempotent `backend/migrations.sql` |
-| PostgreSQL migrations applied | NOT RUN | Docker/PostgreSQL unavailable; package installation blocked by environment restrictions |
+| PostgreSQL migrations applied | PASS | GitHub Actions PostgreSQL 16 service; production EF migration applied at API startup |
 | Running API HTTP smoke check | PASS | `/music/home`: 3 featured and 6 recommended real CC tracks; search returned Carefree; anonymous `/library`: 401 |
 | Browser: real audio | PASS | Carefree loaded 3:25 duration; observed advancing position during navigation |
 | Browser: search and detail routes | PASS | Kevin MacLeod search, artist page, six-track curated collection |
@@ -17,11 +17,11 @@
 | Browser: fullscreen | PASS | Expanded now-playing view, real current track/duration and queue rendered |
 | Browser: responsive UI | PASS | Desktop and 390×844 CSS viewport inspected; mobile document width and scroll width both 375px excluding scrollbar; menu opened |
 | Browser console | PASS within checked flows | No remaining app exception after UUID compatibility fix; browser extension diagnostic errors are unrelated |
-| Browser account journey with PostgreSQL | NOT RUN | API account journeys covered by SQLite integration tests; no claim of full deployed database verification |
-| Playwright CLI suite | NOT RUN | Desktop/mobile specifications included for Windows/CI; interactive browser checks above were executed through the available browser controller |
+| Account HTTP journey with PostgreSQL | PASS | GitHub Actions exercised registration, ownership, playlists/order, favorites, idempotent history, settings, logout/login and persisted library against PostgreSQL 16 |
+| Playwright CLI suite | PASS | GitHub Actions: 4/4 tests passed across desktop and mobile; guest library/reorder/reload and artist/collection/language/fullscreen journeys |
 | Official YouTube external playback/search | NOT RUN | No `YOUTUBE_API_KEY` supplied; iframe adapter and API provider implemented, live quota/region/embed behavior unverified |
 | GitHub authentication | PASS | Connector returned login `energusss` |
-| GitHub repository synchronization | BLOCKED | Repository returned 404, connector lacks creation operation, browser requires separate GitHub sign-in; automatic review blocked the Google-account origin during authentication inspection |
+| GitHub repository synchronization | PASS | Private `https://github.com/energusss/auralis`; original 13 source commits restored unchanged, followed by CI/repair commits |
 
 ## Implemented behavior
 
@@ -45,4 +45,6 @@ Guest library data persists in browser storage. Registered-account playlists/fav
 
 See `README.md` for exact local startup and `DEVELOPMENT_LOG.md` for execution and timestamp details.
 
-Publication continuation: create a private `energusss/auralis` repository and grant the connected GitHub integration access, or run `scripts/publish-github.ps1` using an authenticated local `gh` session. No remote repository or push is claimed.
+Publication completed after the user signed in to GitHub. The original history was transported in a verified Git bundle; the connected GitHub integration set `main` to the exact original commit. The temporary bootstrap is archived on `publication/bootstrap`. Subsequent commits use actual creation timestamps.
+
+Published-code CI: https://github.com/energusss/auralis/actions/runs/40219895569 — frontend and backend builds, 15 frontend tests, 12 backend tests, 4 Playwright tests and the PostgreSQL migration/HTTP journey passed.
