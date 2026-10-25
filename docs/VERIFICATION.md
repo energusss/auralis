@@ -25,7 +25,7 @@
 
 ## Implemented behavior
 
-Global audio/official-visible-YouTube playback adapters; pause/resume, previous/next, seek, volume/mute, shuffle, repeat-one/all, queue insertion/removal/reordering and retry. Playback survives internal navigation. Reload restores queue/options and requires a fresh play gesture.
+Global audio and official YouTube IFrame adapters; pause/resume, previous/next, seek, volume/mute, shuffle, repeat-one/all, queue insertion/removal/reordering and retry. Playback state survives internal navigation. v2.4 hides the YouTube IFrame host with CSS at the user's request; this is unsupported by YouTube's visible-player requirements and playback is not guaranteed.
 
 Typed discovery services, query caching, debounced categorized search with recent searches, artist and collection views, paginated provider search through a load-more action, profile editing, account settings, Polish/English UI, theme/accent preferences, responsive glass interface, Motion transitions, and reduced-motion support.
 
@@ -34,7 +34,7 @@ Guest library data persists in browser storage. Registered-account playlists/fav
 ## Known limitations
 
 - The default real catalog has six attributed Kevin MacLeod tracks; it is a demonstration selection, not a licensed mainstream catalog. Curated groupings are not claimed commercial albums. No measured trending/new-release data is fabricated by the default backend.
-- YouTube Data API provides videos/channels/playlists. Complete YouTube Music albums/discographies and related-artist metadata are not provided. The official embedded player remains visible and may show advertisements or refuse playback. No extraction, ad bypass, or access-control circumvention is implemented.
+- YouTube Data API provides videos/channels/playlists. Complete YouTube Music albums/discographies and related-artist metadata are not provided. The official embedded player may show advertisements or refuse playback. In v2.4 its host is hidden, which is unsupported and may prevent playback. No extraction, ad bypass, or access-control circumvention is implemented.
 - Without a reachable API, discovery uses the explicitly identified local metadata catalog and guest persistence. Server/provider failures currently also fall back to this selection; results can consequently differ from live YouTube discovery.
 - Lyrics have an honest unavailable state; no licensed lyrics provider is configured. No guaranteed gapless playback, offline downloads, proprietary recommendations, or password-recovery/email-verification flow is claimed.
 - Search uses load-more pagination rather than automatic infinite scrolling. The visualizer is an animated playing indicator, not audio-frequency analysis. Initialization uses skeletons and page transitions, not a separate cinematic launch sequence.

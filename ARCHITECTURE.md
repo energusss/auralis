@@ -2,14 +2,14 @@
 
 ## Boundaries
 
-The browser owns presentation, playback adapters and queue state. ASP.NET owns authenticated user data and external metadata requests. PostgreSQL stores accounts, refresh tokens, playlists and library/history records. Third-party media is played by the authorized browser playback mechanism; the API does not extract, download or proxy YouTube audio.
+The browser owns presentation, playback adapters and queue state. ASP.NET owns authenticated user data and external metadata requests. PostgreSQL stores accounts, refresh tokens, playlists and library/history records. The original YouTube IFrame integration remains in the browser and is not rewritten. v2.4 hides its host element with CSS at the user's request; this does not meet YouTube's visible-player requirements, so playback from that hidden host is unsupported and not guaranteed. The API does not extract, download or proxy YouTube audio.
 
 ```mermaid
 flowchart TD
   UI["React routes and glass UI"] --> QUERY["TanStack Query and API service"]
   UI --> STORE["Zustand player store"]
   STORE --> AUDIO["HTML audio adapter"]
-  STORE --> YT["Visible YouTube iframe"]
+  STORE --> YT["YouTube IFrame API (CSS-hidden host)"]
   QUERY --> API["ASP.NET Core API"]
   API --> DB["EF Core / PostgreSQL"]
   API --> PROVIDER["IMusicProvider"]

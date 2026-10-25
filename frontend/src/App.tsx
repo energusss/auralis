@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   createContext,
   useContext,
@@ -58,6 +59,7 @@ import {
   Headphones,
   Disc3,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import * as service from "./services/api";
 import { usePlayer } from "./stores/player";
 import { PlaybackEngine } from "./components/PlaybackEngine";
@@ -96,6 +98,87 @@ type AppContextType = {
 };
 const Context = createContext<AppContextType>(null!);
 const useApp = () => useContext(Context);
+
+function TrackActionMenu({
+  track,
+  queueIndex,
+  onRemove,
+}: {
+  track: Track;
+  queueIndex?: number;
+  onRemove?: () => void;
+}) {
+  const { t } = useTranslation();
+  const { lib, like, choosePlaylist, notify } = useApp();
+  const navigate = useNavigate();
+  const player = usePlayer();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const liked = lib.favorites.some((item) => item.id === track.id);
+  const dismiss = () => setOpen(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = trigger.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 232;
+      const height = onRemove ? 330 : 300;
+      setPosition({
+        left: Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width)),
+        top: rect.bottom + height < window.innerHeight - 8
+          ? rect.bottom + 6
+          : Math.max(8, rect.top - height - 6),
+      });
+    };
+    const outside = (event: PointerEvent) => {
+      if (!panel.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node)) dismiss();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        dismiss();
+        trigger.current?.focus();
+      }
+    };
+    place();
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, onRemove]);
+
+  const action = (run: () => void) => {
+    run();
+    dismiss();
+  };
+  const menu = open ? createPortal(
+    <div ref={panel} className="track-action-menu glass" role="menu" style={position}>
+      <button role="menuitem" disabled={!track.artistId} onClick={() => action(() => navigate(`/artist/${encodeURIComponent(track.artistId)}`))}><ArrowUpRight size={16} />{t("goToArtist")}</button>
+      <button role="menuitem" onClick={() => action(() => void like(track))}><Heart size={16} />{t(liked ? "removeFavorite" : "addFavorite")}</button>
+      <button role="menuitem" onClick={() => action(() => choosePlaylist(track))}><Plus size={16} />{t("addPlaylist")}</button>
+      <button role="menuitem" onClick={() => action(() => { player.enqueue(track); notify(t("added")); })}><ListMusic size={16} />{t("addQueue")}</button>
+      <button role="menuitem" onClick={() => action(() => { player.playNext(track); notify(t("queuedNext")); })}><SkipForward size={16} />{t("playNext")}</button>
+      <button role="menuitem" onClick={() => action(() => {
+        const url = `${window.location.origin}/search?q=${encodeURIComponent(track.title)}`;
+        if (navigator.share) void navigator.share({ title: track.title, text: track.artist, url }).catch(() => {});
+        else void navigator.clipboard?.writeText(url).then(() => notify(t("copied")));
+      })}><ArrowUpRight size={16} />{t("shareTrack")}</button>
+      {(onRemove || queueIndex !== undefined) && <button role="menuitem" className="destructive" onClick={() => action(() => onRemove ? onRemove() : player.remove(queueIndex!))}><Trash2 size={16} />{t(onRemove ? "removeFromPlaylist" : "removeFromQueue")}</button>}
+    </div>, document.body,
+  ) : null;
+  return <>
+    <button ref={trigger} type="button" className="icon-button track-action-trigger" title={t("moreActions")} aria-label={t("moreActions")} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}><MoreHorizontal size={18} /></button>
+    {menu}
+  </>;
+}
 function TrackRow({
   track,
   index = 0,
@@ -171,6 +254,7 @@ function TrackRow({
       >
         <ListMusic size={17} />
       </IconButton>
+      <TrackActionMenu track={track} onRemove={remove} />
       {remove && (
         <IconButton label={t("delete")} onClick={remove}>
           <Trash2 size={16} />
@@ -211,6 +295,7 @@ function MusicCards({ tracks }: { tracks: Track[] }) {
         >
           <div className="cover-wrap">
             <Artwork src={track.artwork} title={track.title} />
+            <div className="card-more"><TrackActionMenu track={track} /></div>
             <button
               aria-label={`${t("play")} ${track.title}`}
               className="card-play"
@@ -554,6 +639,15 @@ function SearchPage() {
     enabled: !!term,
   });
   const results = query.data?.pages;
+  const unique = <T extends { id: string },>(items: T[]) =>
+    Array.from(new Map(items.map((item) => [item.id, item])).values());
+  const tracks = unique(results?.flatMap((page) => page.tracks) ?? []);
+  const artists = unique(results?.flatMap((page) => page.artists) ?? []);
+  const albums = unique(results?.flatMap((page) => page.albums) ?? []);
+  const playlists = unique(results?.flatMap((page) => page.playlists) ?? []);
+  const normalizedTerm = term.trim().toLocaleLowerCase();
+  const topArtist = artists.find((artist) => artist.name.trim().toLocaleLowerCase() === normalizedTerm);
+  const topTrack = tracks.find((track) => track.title.trim().toLocaleLowerCase() === normalizedTerm) ?? tracks[0];
   return (
     <>
       <p className="eyebrow">DISCOVERY / AURALIS</p>
@@ -617,42 +711,28 @@ function SearchPage() {
         <ErrorView error={query.error} retry={() => query.refetch()} />
       ) : results ? (
         <>
-          {results.map((r, i) => (
-            <div key={i}>
-              {r.tracks.length > 0 && (
-                <Section title={t(type === "videos" ? "videos" : "songs")}>
-                  <TrackList tracks={r.tracks} />
-                </Section>
-              )}
-              {r.artists.length > 0 && (
-                <Section title={t("artists")}>
-                  <ArtistCards artists={r.artists} />
-                </Section>
-              )}
-              {r.albums.length > 0 && (
-                <Section title={t("albums")}>
-                  <AlbumCards albums={r.albums} />
-                </Section>
-              )}
-              {r.playlists.length > 0 && (
-                <Section title={t("playlists")}>
-                  {r.playlists.map((p) => (
-                    <Link
-                      className="chip"
-                      key={p.id}
-                      to={"/provider-playlist/" + encodeURIComponent(p.id)}
-                    >
-                      {p.name}
-                    </Link>
-                  ))}
-                </Section>
-              )}
-              {!r.tracks.length &&
-                !r.artists.length &&
-                !r.albums.length &&
-                !r.playlists.length && <Empty />}
-            </div>
-          ))}
+          {type === "all" && (topArtist || topTrack) && (
+            <Section title={t("topResult")}>
+              {topArtist ? (
+                <Link className="search-top-result glass" to={`/artist/${encodeURIComponent(topArtist.id)}`}>
+                  <Artwork src={topArtist.artwork} title={topArtist.name} />
+                  <span><small>{t("artists")}</small><strong>{topArtist.name}</strong></span>
+                  <ArrowUpRight />
+                </Link>
+              ) : topTrack ? (
+                <button className="search-top-result glass" onClick={() => usePlayer.getState().play(tracks, tracks.findIndex((item) => item.id === topTrack.id))}>
+                  <Artwork src={topTrack.artwork} title={topTrack.title} />
+                  <span><small>{t("songs")}</small><strong>{topTrack.title}</strong><small>{topTrack.artist}</small></span>
+                  <Play />
+                </button>
+              ) : null}
+            </Section>
+          )}
+          {tracks.length > 0 && <Section title={t(type === "videos" ? "videos" : "songs")}><TrackList tracks={tracks} /></Section>}
+          {artists.length > 0 && <Section title={t("artists")}><ArtistCards artists={artists} /></Section>}
+          {albums.length > 0 && <Section title={t("albums")}><AlbumCards albums={albums} /></Section>}
+          {playlists.length > 0 && <Section title={t("playlistsFound")}><div className="search-playlists">{playlists.map((playlist) => <Link className="chip" key={playlist.id} to={`/provider-playlist/${encodeURIComponent(playlist.id)}`}><ListMusic size={15} />{playlist.name}</Link>)}</div></Section>}
+          {!tracks.length && !artists.length && !albums.length && !playlists.length && <Empty />}
           {query.hasNextPage && (
             <button
               className="primary"
@@ -1336,7 +1416,7 @@ function PlayerBar({
         </button>
         <div>
           <strong>{track?.title || t("welcome")}</strong>
-          <small>{track?.artist || t("subtitle")}</small>
+          {track?.artistId ? <Link className="mini-player-artist" to={`/artist/${encodeURIComponent(track.artistId)}`}>{track.artist}</Link> : <small>{t("subtitle")}</small>}
         </div>
         {track && (
           <IconButton
@@ -1347,6 +1427,7 @@ function PlayerBar({
             <Heart size={18} />
           </IconButton>
         )}
+        {track && <TrackActionMenu track={track} />}
       </div>
       <div className="player-center">
         <Controls />
@@ -1417,9 +1498,7 @@ function Queue({ close }: { close: () => void }) {
                   <small>{p.queue[i].artist}</small>
                 </span>
               </button>
-              <IconButton label={t("delete")} onClick={() => p.remove(i)}>
-                <X size={15} />
-              </IconButton>
+              <TrackActionMenu track={p.queue[i]} queueIndex={i} />
             </div>
           )}
         </SortableList>
@@ -1429,10 +1508,11 @@ function Queue({ close }: { close: () => void }) {
     </motion.aside>
   );
 }
-function Fullscreen({ close }: { close: () => void }) {
+function Fullscreen({ close, toggleQueue }: { close: () => void; toggleQueue: () => void }) {
   const p = usePlayer();
   const track = p.queue[p.index];
   const { t } = useTranslation();
+  const { lib, like } = useApp();
   return (
     <motion.div
       className="fullscreen-player"
@@ -1456,17 +1536,24 @@ function Fullscreen({ close }: { close: () => void }) {
           <AudioLines /> AURALIS
         </span>
         <p className="eyebrow">{t("nowPlaying")}</p>
-        <IconButton label={t("close")} onClick={close}>
-          <ChevronDown />
-        </IconButton>
+        <div className="fullscreen-header-actions">
+          <IconButton label={t("queue")} onClick={toggleQueue}><ListMusic /></IconButton>
+          <IconButton label={t("close")} onClick={close}><ChevronDown /></IconButton>
+        </div>
       </header>
       <div className="fullscreen-content">
         <div className="fullscreen-main">
           <Artwork src={track?.artwork} title={track?.title || "Auralis"} />
           <h1>{track?.title || t("emptyQueue")}</h1>
-          <p>{track?.artist}</p>
+          {track?.artistId ? <Link className="fullscreen-artist" to={`/artist/${encodeURIComponent(track.artistId)}`}>{track.artist}</Link> : <p className="fullscreen-artist">{track?.artist}</p>}
           <Progress />
           <Controls large />
+          <div className="fullscreen-track-actions">
+            {track && <IconButton label={t(lib.favorites.some((item) => item.id === track.id) ? "removeFavorite" : "addFavorite")} active={lib.favorites.some((item) => item.id === track.id)} onClick={() => like(track)}><Heart size={19} /></IconButton>}
+            {track && <TrackActionMenu track={track} />}
+            <IconButton label={t("mute")} active={p.muted} onClick={p.toggleMute}>{p.muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</IconButton>
+            <input aria-label={t("volume")} type="range" min="0" max="1" step=".01" value={p.muted ? 0 : p.volume} onChange={(event) => p.setVolume(+event.target.value)} />
+          </div>
         </div>
         <aside>
           <h3>{t("queue")}</h3>
@@ -1484,10 +1571,6 @@ function Fullscreen({ close }: { close: () => void }) {
               <Play size={16} />
             </button>
           ))}
-          <div className="lyrics-panel glass">
-            <h3>{t("lyrics")}</h3>
-            <p>{t("noLyrics")}</p>
-          </div>
         </aside>
       </div>
     </motion.div>
@@ -1755,6 +1838,13 @@ export default function App() {
           </div>
         </div>
       </aside>
+      <nav className="mobile-bottom-nav" aria-label={t("navigation")}>
+        {[nav[0], nav[1], nav[3], nav[4], nav[5]].map(({ path, label, icon: Icon }) => (
+          <NavLink key={path} to={path} end={path === "/"} aria-label={t(label)} className={({ isActive }) => `mobile-nav-item${isActive ? " active" : ""}`}>
+            <Icon size={20} /><span>{t(label)}</span>
+          </NavLink>
+        ))}
+      </nav>
       <main className="main">
         <header className="topbar">
           <div className="topbar-left">
@@ -1772,16 +1862,6 @@ export default function App() {
             </button>
           </div>
           <div className="topbar-right">
-            <button
-              className="lang-toggle"
-              onClick={() => {
-                const lng = i18n.language === "pl" ? "en" : "pl";
-                localStorage.setItem("auralis-language", lng);
-                i18n.changeLanguage(lng);
-              }}
-            >
-              {i18n.language.toUpperCase()}
-            </button>
             {session ? (
               <>
                 <span className="avatar">
@@ -1877,7 +1957,7 @@ export default function App() {
       />
       <AnimatePresence>
         {queue && <Queue close={() => setQueue(false)} />}{" "}
-        {full && <Fullscreen close={() => setFull(false)} />}
+        {full && <Fullscreen close={() => setFull(false)} toggleQueue={() => setQueue((v) => !v)} />}
       </AnimatePresence>
       <AnimatePresence>
         {toast && (
@@ -1973,18 +2053,13 @@ export default function App() {
               onCredential={(credential) => {
                 setBusy(true);
                 setAuthError("");
-                service
-                  .send<service.Session>("/auth/google", { credential })
-                  .then((s) => {
-                    service.setSession(s);
+                service.send<service.Session>("/auth/google", { credential })
+                  .then((session) => {
+                    service.setSession(session);
                     setAuth(false);
                     notify(t("welcome"));
                   })
-                  .catch((e: unknown) =>
-                    setAuthError(
-                      e instanceof Error ? e.message : t("accountError"),
-                    ),
-                  )
+                  .catch((error: unknown) => setAuthError(error instanceof Error ? error.message : t("accountError")))
                   .finally(() => setBusy(false));
               }}
             />

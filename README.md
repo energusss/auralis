@@ -7,7 +7,7 @@ A React/TypeScript and ASP.NET Core music application with a dark glass interfac
 ## Music sources
 
 - The credential-free selection contains six real Kevin MacLeod tracks streamed from Incompetech, with Creative Commons attribution. Internet access is still required for these audio URLs. See [music credits](THIRD_PARTY_NOTICES.md).
-- Set `YOUTUBE_API_KEY` to enable official YouTube Data API metadata discovery. YouTube playback uses the visible official iframe, preserving provider restrictions and advertisements.
+- Set `YOUTUBE_API_KEY` to enable YouTube Data API metadata discovery. The original official IFrame playback integration is retained, but v2.4 hides its container with CSS at the user's request. Hidden-player playback is unsupported by YouTube's embedding requirements and is not guaranteed to work; Auralis does not extract audio or bypass player restrictions.
 - YouTube channels and playlists are not guaranteed to represent musical artists and albums. Complete YouTube Music discographies, unauthorized extraction, ad bypass, and guaranteed gapless audio are not provided.
 - The selection is curated, not a measured popularity chart. The collection title is an Auralis editorial grouping, not a claimed commercial album.
 - [Provider investigation](docs/PROVIDER_RESEARCH.md) explains the six reviewed open-source implementations and the chosen boundary.
@@ -104,10 +104,3 @@ The ZIP includes `auralis-history.bundle` as a portable backup of the published 
 - `docs/`: research and verification; [API contract](backend/API_CONTRACT.md).
 
 See [architecture](ARCHITECTURE.md), [change log](CHANGELOG.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
-
-
-## Google sign-in setup
-
-Create a **Web application** OAuth client in Google Cloud Console and configure the OAuth branding/consent screen. Add the local app origin (for example, `http://localhost:5173`) under **Authorized JavaScript origins**; add the production origin only if you later host the app. This GIS popup flow does not need a redirect URI.
-
-Set the same Web client ID in backend `GOOGLE_CLIENT_ID` and frontend `VITE_GOOGLE_CLIENT_ID`. The client ID is public; do not put a client secret in the frontend. The backend verifies Google's token signature, issuer, audience, expiry, and verified email before linking by the stable Google subject.

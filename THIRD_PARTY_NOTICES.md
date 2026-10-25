@@ -21,7 +21,7 @@ The project streams the source MP3 URLs listed in the demo catalog; it does not 
 
 ## YouTube
 
-YouTube metadata and embedded video playback remain subject to their service requirements and content-owner restrictions. YouTube names, logos and content are not owned by Auralis. No media downloading or ad bypass is included. The official embedded player remains visible.
+YouTube metadata and embedded video playback remain subject to their service requirements and content-owner restrictions. YouTube names, logos and content are not owned by Auralis. No media downloading or ad bypass is included. In v2.4 the official IFrame host is hidden by CSS at the user's request; that presentation does not meet YouTube's visible-player requirements and playback is not supported or guaranteed.
 
 ## Software
 

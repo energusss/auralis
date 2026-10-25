@@ -74,3 +74,14 @@ describe("queue transitions", () => {
     expect(usePlayer.getState().seekRequest?.position).toBe(0);
   });
 });
+
+describe("queue actions", () => {
+  it("inserts play-next after the active track without restarting it", () => {
+    usePlayer.getState().play([track("a"), track("c")]);
+    const activeLoadId = usePlayer.getState().loadId;
+    usePlayer.getState().playNext(track("b"));
+    expect(usePlayer.getState().queue.map((item) => item.id)).toEqual(["a", "b", "c"]);
+    expect(usePlayer.getState().index).toBe(0);
+    expect(usePlayer.getState().loadId).toBe(activeLoadId);
+  });
+});

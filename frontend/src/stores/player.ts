@@ -50,6 +50,7 @@ interface PlayerState {
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   enqueue: (track: Track) => void;
+  playNext: (track: Track) => void;
   remove: (index: number) => void;
   reorder: (from: number, to: number) => void;
   clear: () => void;
@@ -162,6 +163,14 @@ export const usePlayer = create<PlayerState>()(
             s.repeat === "none" ? "all" : s.repeat === "all" ? "one" : "none",
         })),
       enqueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+      playNext: (track) =>
+        set((s) => ({
+          queue: [
+            ...s.queue.slice(0, s.index + 1),
+            track,
+            ...s.queue.slice(s.index + 1),
+          ],
+        })),
       remove: (index) => {
         const s = get();
         if (index < 0 || index >= s.queue.length) return;
