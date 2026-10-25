@@ -1,6 +1,7 @@
 namespace Auralis.Domain;
 
-public record Playback(string Kind, string? Url = null, string? VideoId = null, string? MediaType = null, string? Availability = null, DateTimeOffset? ExpiresAt = null);
+public record Playback(string Kind, string? Url = null, string? VideoId = null, string? MediaType = null, string? Availability = null, DateTimeOffset? ExpiresAt = null, string? Codec = null, string? LicenseUrl = null, string? SourcePage = null);
+public record PlaybackResolution(string TrackId, string Provider, string Availability, string? Url = null, string? MediaType = null, string? Codec = null, DateTimeOffset? ExpiresAt = null, string? ErrorCategory = null, bool RetryEligible = false, string? LicenseUrl = null, string? SourcePage = null);
 public record Track(string Id, string Title, string Artist, string ArtistId, string Album, string AlbumId, string Artwork, int Duration, string Genre, string Provider, Playback Playback);
 public record ArtistSummary(string Id, string Name, string Artwork);
 public record AlbumSummary(string Id, string Title, string Artist, string ArtistId, string Artwork, int Year);

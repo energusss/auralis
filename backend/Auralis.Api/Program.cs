@@ -12,13 +12,16 @@ var builder=WebApplication.CreateBuilder(args);
 var jwtKey=builder.Configuration["JWT_KEY"]??builder.Configuration["Jwt:Key"]??"";
 
 builder.Services.AddDbContext<AuralisDb>(o=>o.UseNpgsql(builder.Configuration["DATABASE_URL"]??builder.Configuration.GetConnectionString("Database")??"Host=localhost;Port=5432;Database=auralis;Username=auralis;Password=auralis_local_only"));
-builder.Services.AddMemoryCache(); builder.Services.AddHttpClient("youtube",c=>c.Timeout=TimeSpan.FromSeconds(15));builder.Services.AddSingleton<DemoMusicProvider>();
+builder.Services.AddMemoryCache(); builder.Services.AddHttpClient("youtube",c=>c.Timeout=TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient<InternetArchiveAudioProvider>(c=>{c.BaseAddress=new Uri("https://archive.org/");c.Timeout=TimeSpan.FromSeconds(20);c.DefaultRequestHeaders.UserAgent.ParseAdd("AuralisMusic/2.2 (+https://github.com/energusss/auralis)");});
+builder.Services.AddScoped<IOpenAudioProvider>(s=>s.GetRequiredService<InternetArchiveAudioProvider>());
+builder.Services.AddSingleton<DemoMusicProvider>();
 builder.Services.AddScoped<IMusicProvider>(s=>string.IsNullOrWhiteSpace(builder.Configuration["YOUTUBE_API_KEY"])?s.GetRequiredService<DemoMusicProvider>():new YouTubeMusicProvider(s.GetRequiredService<IHttpClientFactory>().CreateClient("youtube"),s.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),s.GetRequiredService<DemoMusicProvider>(),builder.Configuration["YOUTUBE_API_KEY"]!));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<GoogleTokenVerifier>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="auralis",ValidAudience="auralis-web",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),ClockSkew=TimeSpan.FromSeconds(30)});
 builder.Services.AddAuthorization();builder.Services.AddCors(o=>o.AddDefaultPolicy(p=>p.WithOrigins((builder.Configuration["FRONTEND_ORIGINS"]??"http://localhost:5173,http://localhost:4173").Split(',')).AllowAnyHeader().AllowAnyMethod()));
-builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("api",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)??ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=180,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));o.AddPolicy("auth",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=12,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
+builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("api",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)??ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=180,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));o.AddPolicy("catalog",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=20,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));o.AddPolicy("auth",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=12,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 builder.Services.AddEndpointsApiExplorer();builder.Services.AddSwaggerGen();builder.Services.AddProblemDetails();
 builder.WebHost.ConfigureKestrel(o=>o.Limits.MaxRequestBodySize=128*1024);
 var app=builder.Build();
