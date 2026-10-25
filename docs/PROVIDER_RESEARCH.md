@@ -36,7 +36,7 @@ Sources: [repository](https://github.com/sigma67/ytmusicapi), [browsing implemen
 
 Inspected tree: `bfba5ecb16795cfc93ecce73d94ca583bcec917c` on `dev`. The Android app separates an `innertube` module from application code. `MusicService.kt` integrates Android Media3/ExoPlayer, MediaLibraryService, playback statistics, queue state and caching/resolving data sources. `SongEntity.kt` stores ID, title, duration, thumbnail, album references, liked status and total listening time.
 
-Useful lesson: metadata identity, persisted library state and runtime playback are separate concerns. Playback events should drive history and statistics. Its native extraction/resolution path is outside Auralis's authorized playback boundary; Auralis uses the official iframe instead.
+Useful lesson: metadata identity, persisted library state and runtime playback are separate concerns. Playback events should drive history and statistics. Its native extraction/resolution path is outside Auralis's authorized playback boundary; Auralis keeps YouTube results metadata-only and uses authorized direct-audio URLs for playback.
 
 Sources: [repository](https://github.com/z-huang/InnerTune), [service](https://github.com/z-huang/InnerTune/blob/dev/app/src/main/java/com/zionhuang/music/playback/MusicService.kt), [song entity](https://github.com/z-huang/InnerTune/blob/dev/app/src/main/java/com/zionhuang/music/db/entities/SongEntity.kt).
 

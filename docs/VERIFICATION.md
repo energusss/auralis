@@ -1,5 +1,7 @@
 # Verification — 25 October 2026
 
+The v1.0 and v1.1 results below are historical snapshots. The v2.0 section records the current playback design and latest verification, and supersedes earlier YouTube playback descriptions.
+
 ## Executed checks
 
 | Check | Result | Evidence / scope |
