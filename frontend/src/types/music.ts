@@ -16,6 +16,23 @@ export interface Track {
   provider: string;
   playback: Playback;
 }
+export function isPlayableTrack(value: unknown): value is Track {
+  if (!value || typeof value !== "object") return false;
+  const track = value as Partial<Track>;
+  return (
+    typeof track.id === "string" &&
+    track.id.length > 0 &&
+    typeof track.title === "string" &&
+    typeof track.artist === "string" &&
+    !!track.playback &&
+    (track.playback.kind === "audio"
+      ? typeof track.playback.url === "string" &&
+        track.playback.url.startsWith("https://")
+      : track.playback.kind === "youtube" &&
+        typeof track.playback.videoId === "string" &&
+        /^[\w-]{11}$/.test(track.playback.videoId))
+  );
+}
 export interface ArtistSummary {
   id: string;
   name: string;

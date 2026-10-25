@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Track } from "../types/music";
+import { isPlayableTrack, type Track } from "../types/music";
 export type Repeat = "none" | "one" | "all";
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
 export function nextQueueIndex(
@@ -73,13 +73,19 @@ export const usePlayer = create<PlayerState>()(
       loadId: 0,
       seekRequest: null,
       play: (tracks, index = 0) => {
-        if (!tracks.length) return;
-        const i = Math.max(0, Math.min(index, tracks.length - 1));
+        const playable = tracks
+          .map((track, sourceIndex) => ({ track, sourceIndex }))
+          .filter(({ track }) => isPlayableTrack(track));
+        if (!playable.length) return;
+        const i = Math.max(
+          0,
+          playable.findIndex(({ sourceIndex }) => sourceIndex === index),
+        );
         set((s) => ({
-          queue: [...tracks],
+          queue: playable.map(({ track }) => track),
           index: i,
           position: 0,
-          duration: tracks[i].duration,
+          duration: playable[i].track.duration,
           playing: true,
           status: "loading",
           error: null,
@@ -161,7 +167,10 @@ export const usePlayer = create<PlayerState>()(
           repeat:
             s.repeat === "none" ? "all" : s.repeat === "all" ? "one" : "none",
         })),
-      enqueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+      enqueue: (track) => {
+        if (isPlayableTrack(track))
+          set((s) => ({ queue: [...s.queue, track] }));
+      },
       remove: (index) => {
         const s = get();
         if (index < 0 || index >= s.queue.length) return;

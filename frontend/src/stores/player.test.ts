@@ -66,6 +66,26 @@ describe("queue transitions", () => {
     const a = [1, 2];
     expect(moveItem(a, -1, 1)).toBe(a);
   });
+  it("rejects artist/channel results and tracks without an authorized source", () => {
+    const before = usePlayer.getState().queue;
+    usePlayer
+      .getState()
+      .play([
+        { id: "yt:channel", name: "Artist", artwork: "" } as unknown as Track,
+      ]);
+    usePlayer
+      .getState()
+      .enqueue({
+        id: "yt:channel",
+        name: "Artist",
+        artwork: "",
+      } as unknown as Track);
+    expect(usePlayer.getState().queue).toBe(before);
+    usePlayer
+      .getState()
+      .play([{ ...track("invalid"), playback: { kind: "youtube" } } as Track]);
+    expect(usePlayer.getState().queue).toBe(before);
+  });
   it("previous seeks to beginning after three seconds", () => {
     usePlayer.getState().play([track("a"), track("b")], 1);
     usePlayer.setState({ position: 20 });

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Xml;
 using Auralis.Domain;
@@ -19,13 +20,23 @@ public class YouTubeMusicProvider(HttpClient http, IMemoryCache cache, DemoMusic
  private static Track TrackFrom(JsonElement item) {var s=item.GetProperty("snippet");var id=item.GetProperty("id").ValueKind==JsonValueKind.String?S(item,"id"):S(item.GetProperty("id"),"videoId"); var duration=item.TryGetProperty("contentDetails",out var details)?(int)XmlConvert.ToTimeSpan(S(details,"duration")).TotalSeconds:0;return new("yt:"+id,WebUtility.HtmlDecode(S(s,"title")),WebUtility.HtmlDecode(S(s,"channelTitle")),"yt:"+S(s,"channelId"),"","",Art(s),duration,"Music","YouTube",new("youtube",null,id));}
  private static string Raw(string id) {if(!id.StartsWith("yt:")||id.Length>150)throw new ArgumentException("Invalid YouTube identifier.");return Uri.EscapeDataString(id[3..]);}
  public async Task<SearchResult> SearchAsync(string query,string type,string? cursor,CancellationToken ct) {
+ if(type=="all") {
+  string?[] cursors=[null,null,null];
+  if(!string.IsNullOrEmpty(cursor))try{cursors=JsonSerializer.Deserialize<string?[]>(Encoding.UTF8.GetString(Convert.FromBase64String(cursor)))??cursors;}catch(FormatException){}catch(JsonException){}
+  var results=await Task.WhenAll(SearchTyped(query,"video",cursors.ElementAtOrDefault(0),ct),SearchTyped(query,"channel",cursors.ElementAtOrDefault(1),ct),SearchTyped(query,"playlist",cursors.ElementAtOrDefault(2),ct));
+  var next=results.Any(x=>!string.IsNullOrEmpty(x.NextCursor))?Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(results.Select(x=>x.NextCursor)))):null;
+  return new(results[0].Tracks,results[1].Artists,[],results[2].Playlists,next);
+ }
  if(type=="albums")return await demo.SearchAsync(query,type,cursor,ct);
  var ytType=type=="artists"?"channel":type=="playlists"?"playlist":"video";
+ return await SearchTyped(query,ytType,cursor,ct);
+ }
+ private async Task<SearchResult> SearchTyped(string query,string ytType,string? cursor,CancellationToken ct) {
  var endpoint="search?part=snippet&maxResults=24&type="+ytType+"&q="+Uri.EscapeDataString(query)+(ytType=="video"?"&videoCategoryId=10&videoEmbeddable=true":"")+(string.IsNullOrEmpty(cursor)?"":"&pageToken="+Uri.EscapeDataString(cursor));
  var data=await Fetch(endpoint,ct);var items=data.GetProperty("items").EnumerateArray().ToArray();
- var tracks=ytType=="video"?items.Select(TrackFrom).ToArray():[];
- var artists=ytType=="channel"?items.Select(i=>{var s=i.GetProperty("snippet");return new ArtistSummary("yt:"+S(i.GetProperty("id"),"channelId"),WebUtility.HtmlDecode(S(s,"title")),Art(s));}).ToArray():[];
- var playlists=ytType=="playlist"?items.Select(i=>{var s=i.GetProperty("snippet");return new MusicPlaylist("yt:"+S(i.GetProperty("id"),"playlistId"),WebUtility.HtmlDecode(S(s,"title")),Art(s),[]);}).ToArray():[];
+ var tracks=ytType=="video"?items.Select(TrackFrom).Where(t=>!string.IsNullOrWhiteSpace(t.Playback.VideoId)).ToArray():[];
+ var artists=ytType=="channel"?items.Select(i=>{var s=i.GetProperty("snippet");var id=S(i.GetProperty("id"),"channelId");return string.IsNullOrEmpty(id)?null:new ArtistSummary("yt:"+id,WebUtility.HtmlDecode(S(s,"title")),Art(s));}).OfType<ArtistSummary>().ToArray():[];
+ var playlists=ytType=="playlist"?items.Select(i=>{var s=i.GetProperty("snippet");var id=S(i.GetProperty("id"),"playlistId");return string.IsNullOrEmpty(id)?null:new MusicPlaylist("yt:"+id,WebUtility.HtmlDecode(S(s,"title")),Art(s),[]);}).OfType<MusicPlaylist>().ToArray():[];
  return new(tracks,artists,[],playlists,S(data,"nextPageToken") is {Length:>0} n?n:null);
  }
  public async Task<Track?> GetTrackAsync(string id,CancellationToken ct) {if(!id.StartsWith("yt:"))return await demo.GetTrackAsync(id,ct); var data=await Fetch("videos?part=snippet,contentDetails&id="+Raw(id),ct);return data.GetProperty("items").EnumerateArray().Select(TrackFrom).FirstOrDefault();}
