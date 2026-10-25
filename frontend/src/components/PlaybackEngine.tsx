@@ -7,7 +7,18 @@ import {
   consumeExpectedPause,
   onAudioFailure,
   selectAudioTrack,
+  pauseAudio,
 } from "../services/audioRuntime";
+import {
+  deactivateYouTube,
+  initializeYouTubePlayer,
+  selectYouTubeTrack,
+  youtubeDuration,
+  youtubeIsActive,
+  youtubeIsAudible,
+  youtubePosition,
+  setYouTubeVolume,
+} from "../services/youtubeRuntime";
 import type { Track } from "../types/music";
 
 export function PlaybackEngine({
@@ -24,6 +35,7 @@ export function PlaybackEngine({
     defaultValue: "Playback failed. Retry or choose another track.",
   });
   const message = useRef(errorMessage);
+  const host = useRef<HTMLDivElement>(null);
   const seconds = useRef(0);
   const previousPosition = useRef(0);
   const previousTick = useRef(0);
@@ -41,13 +53,25 @@ export function PlaybackEngine({
 
   useEffect(() => {
     const audio = getAudioElement();
-    const fail = () => usePlayer.getState().setStatus("error", message.current);
-    const playing = () => usePlayer.getState().setStatus("playing");
-    const waiting = () => usePlayer.getState().setStatus("loading");
+    const isYoutube = () =>
+      usePlayer.getState().queue[usePlayer.getState().index]?.playback.kind ===
+      "youtube";
+    const fail = () => {
+      if (!isYoutube())
+        usePlayer.getState().setStatus("error", message.current);
+    };
+    const playing = () => {
+      if (!isYoutube()) usePlayer.getState().setStatus("playing");
+    };
+    const waiting = () => {
+      if (!isYoutube()) usePlayer.getState().setStatus("loading");
+    };
     const paused = () => {
       const state = usePlayer.getState();
+      const expected = consumeExpectedPause();
       if (
-        !consumeExpectedPause() &&
+        !expected &&
+        !isYoutube() &&
         state.queue.length > 0 &&
         state.status !== "error"
       )
@@ -55,6 +79,7 @@ export function PlaybackEngine({
       flush();
     };
     const ended = () => {
+      if (isYoutube()) return;
       flush();
       usePlayer.getState().ended();
     };
@@ -70,18 +95,25 @@ export function PlaybackEngine({
       const now = performance.now();
       const elapsed = Math.max(0, (now - previousTick.current) / 1000);
       previousTick.current = now;
-      const position = Number.isFinite(audio.currentTime)
+      const state = usePlayer.getState();
+      const youtube =
+        state.queue[state.index]?.playback.kind === "youtube" &&
+        youtubeIsActive();
+      const audioPosition = Number.isFinite(audio.currentTime)
         ? audio.currentTime
         : 0;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      const state = usePlayer.getState();
+      const position = youtube ? youtubePosition() : audioPosition;
+      const audioDuration = Number.isFinite(audio.duration)
+        ? audio.duration
+        : 0;
+      const duration = youtube ? youtubeDuration() : audioDuration;
       state.sync(position, duration || trackRef.current?.duration || 0);
       const advanced = position - previousPosition.current;
       if (
         state.status === "playing" &&
         !state.muted &&
         state.volume > 0 &&
-        !audio.paused &&
+        (youtube ? youtubeIsAudible() : !audio.paused) &&
         advanced > 0 &&
         advanced <= elapsed + 1
       )
@@ -107,17 +139,86 @@ export function PlaybackEngine({
   useEffect(() => {
     const audio = getAudioElement();
     const state = usePlayer.getState();
-    if (track)
+    if (track?.playback.kind === "youtube" && track.playback.videoId) {
+      pauseAudio();
+      const onStateChange = (status: number) => {
+        const current = usePlayer.getState();
+        if (
+          !youtubeIsActive() ||
+          current.queue[current.index]?.playback.kind !== "youtube"
+        )
+          return;
+        if (status === 1)
+          usePlayer.setState({ playing: true, status: "playing", error: null });
+        else if (status === 2) {
+          if (current.status !== "error")
+            usePlayer.setState({ playing: false, status: "paused" });
+          flush();
+        } else if (status === 3) current.setStatus("loading");
+        else if (status === 0) {
+          flush();
+          current.ended();
+        }
+      };
+      initializeYouTubePlayer(host.current!, {
+        onReady: () => {
+          const current = usePlayer.getState();
+          setYouTubeVolume(current.volume, current.muted);
+        },
+        onStateChange,
+        onAutoplayBlocked: () =>
+          youtubeIsActive() &&
+          usePlayer.getState().setStatus(
+            "error",
+            t("youtubeAutoplayBlocked", {
+              defaultValue:
+                "Use the visible YouTube player controls to start playback.",
+            }),
+          ),
+        onError: (code) => {
+          if (!youtubeIsActive()) return;
+          const key =
+            code === 101 || code === 150
+              ? "youtubeEmbeddingBlocked"
+              : code === 100
+                ? "youtubeUnavailable"
+                : "youtubePlayerError";
+          usePlayer.getState().setStatus(
+            "error",
+            t(key, {
+              defaultValue:
+                code === 101 || code === 150
+                  ? "This video cannot be played in an embedded player."
+                  : code === 100
+                    ? "This video is unavailable or private."
+                    : "The YouTube player could not play this video.",
+            }),
+          );
+        },
+      });
+      selectYouTubeTrack(
+        track.playback.videoId,
+        `${track.id}:${loadId}`,
+        state.playing,
+        state.volume,
+        state.muted,
+      );
+    } else {
+      deactivateYouTube();
+    }
+    if (track?.playback.kind === "audio")
       selectAudioTrack(track, loadId, state.volume, state.muted, state.playing);
+    const position =
+      track?.playback.kind === "youtube" ? 0 : audio.currentTime || 0;
     if (
       previousTrack.current?.id !== track?.id ||
-      previousPosition.current > audio.currentTime + 1
+      previousPosition.current > position + 1
     ) {
       flush();
       seconds.current = 0;
     }
     previousTrack.current = track;
-    previousPosition.current = audio.currentTime || 0;
+    previousPosition.current = position;
     if (
       track &&
       "mediaSession" in navigator &&
@@ -138,7 +239,15 @@ export function PlaybackEngine({
       Record<MediaSessionAction, MediaSessionActionHandler>
     > = {
       play: () => {
-        if (!usePlayer.getState().playing) usePlayer.getState().toggle();
+        const state = usePlayer.getState();
+        if (
+          !state.playing &&
+          !(
+            document.hidden &&
+            state.queue[state.index]?.playback.kind === "youtube"
+          )
+        )
+          state.toggle();
       },
       pause: () => {
         if (usePlayer.getState().playing) usePlayer.getState().toggle();
@@ -168,5 +277,35 @@ export function PlaybackEngine({
     };
   }, []);
 
-  return null;
+  useEffect(() => {
+    const pauseHiddenYouTube = () => {
+      const state = usePlayer.getState();
+      if (
+        document.hidden &&
+        state.playing &&
+        state.queue[state.index]?.playback.kind === "youtube"
+      )
+        state.toggle();
+    };
+    document.addEventListener("visibilitychange", pauseHiddenYouTube);
+    return () =>
+      document.removeEventListener("visibilitychange", pauseHiddenYouTube);
+  }, []);
+
+  const youtube = track?.playback.kind === "youtube";
+  return (
+    <aside
+      className={`youtube-player glass${youtube ? " is-active" : ""}`}
+      aria-label={t("officialPlayer", {
+        defaultValue: "Official YouTube player",
+      })}
+      aria-hidden={!youtube}
+      aria-live="polite"
+    >
+      <div className="youtube-player-viewport" ref={host} />
+      <div className="youtube-player-caption">
+        {t("officialPlayer", { defaultValue: "Official YouTube player" })}
+      </div>
+    </aside>
+  );
 }

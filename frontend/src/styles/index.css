@@ -11,3 +11,5 @@
  .track-availability{display:block;color:var(--muted);font-size:10px;margin-top:3px}
  .track-source{font-size:10px;color:var(--muted);white-space:nowrap}.track-source:hover{color:#fff}
 @media(max-width:760px){.track-source{display:none}}
+/* The visible official embed stays mounted across routes and is hidden only when another provider is active. */
+.youtube-player{position:fixed;right:16px;bottom:126px;z-index:130;width:min(360px,calc(100vw - 32px));padding:8px;border-radius:16px;overflow:hidden;background:#080a12ed;box-shadow:0 12px 48px #0008;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(10px);transition:opacity .22s ease,transform .22s ease,visibility .22s}.youtube-player.is-active{opacity:1;visibility:visible;pointer-events:auto;transform:none}.youtube-player-viewport{width:100%;height:auto;aspect-ratio:4/3;min-width:200px;min-height:200px;background:#05060a}.youtube-player-viewport iframe{display:block;width:100%;height:100%;border:0}.youtube-player-caption{padding:7px 5px 2px;font-size:10px;color:#a9a4b6;letter-spacing:.04em}@media(max-width:600px){.youtube-player{right:8px;bottom:110px;width:min(360px,calc(100vw - 16px))}}

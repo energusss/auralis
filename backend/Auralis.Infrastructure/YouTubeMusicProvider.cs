@@ -8,7 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Auralis.Infrastructure;
 // YouTube channels/playlists are honestly represented; the Data API does not expose a music album catalog.
 public class YouTubeMusicProvider(HttpClient http, IMemoryCache cache, DemoMusicProvider demo, string apiKey) : IMusicProvider {
- public string Status=>"YouTube Data API metadata discovery; playable audio is limited to authorized direct audio sources";
+ public string Status=>"YouTube Data API discovery with official embedded-player playback; direct audio URLs are not exposed";
  private async Task<JsonElement> Fetch(string endpoint, CancellationToken ct) {
  if(cache.TryGetValue<JsonElement>(endpoint,out var cached)) return cached;
  using var response=await http.GetAsync("https://www.googleapis.com/youtube/v3/"+endpoint+"&key="+Uri.EscapeDataString(apiKey),ct);
@@ -17,7 +17,7 @@ public class YouTubeMusicProvider(HttpClient http, IMemoryCache cache, DemoMusic
  }
  private static string S(JsonElement e,string key)=>e.TryGetProperty(key,out var x)?x.GetString()??"":"";
  private static string Art(JsonElement snippet) { if(!snippet.TryGetProperty("thumbnails",out var thumbs))return "";foreach(var size in new[]{"high","medium","default"})if(thumbs.TryGetProperty(size,out var t))return S(t,"url");return "";}
- private static Track TrackFrom(JsonElement item) {var s=item.GetProperty("snippet");var id=item.GetProperty("id").ValueKind==JsonValueKind.String?S(item,"id"):S(item.GetProperty("id"),"videoId"); var duration=item.TryGetProperty("contentDetails",out var details)?(int)XmlConvert.ToTimeSpan(S(details,"duration")).TotalSeconds:0;return new("yt:"+id,WebUtility.HtmlDecode(S(s,"title")),WebUtility.HtmlDecode(S(s,"channelTitle")),"yt:"+S(s,"channelId"),"","",Art(s),duration,"Music","YouTube",new("youtube",null,id,null,"metadata-only"));}
+ private static Track TrackFrom(JsonElement item) {var s=item.GetProperty("snippet");var id=item.GetProperty("id").ValueKind==JsonValueKind.String?S(item,"id"):S(item.GetProperty("id"),"videoId"); var duration=item.TryGetProperty("contentDetails",out var details)?(int)XmlConvert.ToTimeSpan(S(details,"duration")).TotalSeconds:0;return new("yt:"+id,WebUtility.HtmlDecode(S(s,"title")),WebUtility.HtmlDecode(S(s,"channelTitle")),"yt:"+S(s,"channelId"),"","",Art(s),duration,"Music","YouTube",new("youtube",null,id,null,"official-player"));}
  private static string Raw(string id) {if(!id.StartsWith("yt:")||id.Length>150)throw new ArgumentException("Invalid YouTube identifier.");return Uri.EscapeDataString(id[3..]);}
  public async Task<SearchResult> SearchAsync(string query,string type,string? cursor,CancellationToken ct) {
  if(type=="all") {
@@ -48,7 +48,7 @@ public class YouTubeMusicProvider(HttpClient http, IMemoryCache cache, DemoMusic
  public Task<Album?> GetAlbumAsync(string id,CancellationToken ct)=>demo.GetAlbumAsync(id,ct);
  public async Task<MusicPlaylist?> GetPlaylistAsync(string id,CancellationToken ct) {
  if(!id.StartsWith("yt:"))return await demo.GetPlaylistAsync(id,ct);var meta=await Fetch("playlists?part=snippet&id="+Raw(id),ct);var item=meta.GetProperty("items").EnumerateArray().FirstOrDefault();if(item.ValueKind==JsonValueKind.Undefined)return null;
- var data=await Fetch("playlistItems?part=snippet&maxResults=50&playlistId="+Raw(id),ct);var ts=new List<Track>();foreach(var v in data.GetProperty("items").EnumerateArray()){var sn=v.GetProperty("snippet");var video=S(sn.GetProperty("resourceId"),"videoId");if(string.IsNullOrEmpty(video)||S(sn,"title") is "Deleted video" or "Private video")continue;ts.Add(new("yt:"+video,S(sn,"title"),S(sn,"videoOwnerChannelTitle"),"yt:"+S(sn,"videoOwnerChannelId"),"","",Art(sn),0,"Music","YouTube",new("youtube",null,video,null,"metadata-only")));}
+ var data=await Fetch("playlistItems?part=snippet&maxResults=50&playlistId="+Raw(id),ct);var ts=new List<Track>();foreach(var v in data.GetProperty("items").EnumerateArray()){var sn=v.GetProperty("snippet");var video=S(sn.GetProperty("resourceId"),"videoId");if(string.IsNullOrEmpty(video)||S(sn,"title") is "Deleted video" or "Private video")continue;ts.Add(new("yt:"+video,S(sn,"title"),S(sn,"videoOwnerChannelTitle"),"yt:"+S(sn,"videoOwnerChannelId"),"","",Art(sn),0,"Music","YouTube",new("youtube",null,video,null,"official-player")));}
  var s=item.GetProperty("snippet");return new(id,S(s,"title"),Art(s),ts);
  }
  public async Task<IReadOnlyList<Track>> GetRecommendationsAsync(IEnumerable<Track> seeds,CancellationToken ct){var seed=seeds.FirstOrDefault();return seed is null?(await GetHomeAsync(ct)).Featured:(await SearchAsync(seed.Artist,"songs",null,ct)).Tracks;}

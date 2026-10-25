@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackEngine } from "./PlaybackEngine";
 import { usePlayer } from "../stores/player";
 import { resetAudioRuntimeForTests } from "../services/audioRuntime";
+import {
+  resetYouTubeRuntimeForTests,
+  type YouTubeApi,
+  type YouTubePlayer,
+} from "../services/youtubeRuntime";
 import type { Track } from "../types/music";
 
 vi.mock("react-i18next", () => ({
@@ -84,6 +89,7 @@ const track = (id: string): Track => ({
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] });
   resetAudioRuntimeForTests();
+  resetYouTubeRuntimeForTests();
   FakeAudio.instances = [];
   vi.stubGlobal("Audio", FakeAudio);
   usePlayer.setState({
@@ -106,6 +112,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   resetAudioRuntimeForTests();
+  resetYouTubeRuntimeForTests();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -160,6 +167,85 @@ describe("persistent authorized audio engine", () => {
     expect(FakeAudio.instances).toHaveLength(1);
     expect(audio.play).toHaveBeenCalledTimes(before);
     expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe("a");
+  });
+
+  it("uses one visible official YouTube player and switches cleanly to Archive audio", async () => {
+    let playerOptions: { events: { onReady: () => void } } | null = null;
+    let playerCreateCount = 0;
+    const youtubePlayer: YouTubePlayer = {
+      playVideo: vi.fn(),
+      pauseVideo: vi.fn(),
+      loadVideoById: vi.fn(),
+      cueVideoById: vi.fn(),
+      seekTo: vi.fn(),
+      setVolume: vi.fn(),
+      mute: vi.fn(),
+      unMute: vi.fn(),
+      getCurrentTime: () => 8,
+      getDuration: () => 181,
+      getPlayerState: () => 1,
+      destroy: vi.fn(),
+    };
+    class FakeYouTubePlayer {
+      constructor(
+        _element: HTMLElement,
+        options: { events: { onReady: () => void } },
+      ) {
+        playerCreateCount++;
+        playerOptions = options;
+        queueMicrotask(() => options.events.onReady());
+        return youtubePlayer as unknown as FakeYouTubePlayer;
+      }
+    }
+    window.YT = {
+      Player: FakeYouTubePlayer as unknown as YouTubeApi["Player"],
+    };
+    const rendered = render(<PlaybackEngine />);
+    await act(async () => {
+      usePlayer.getState().play([track("archive")]);
+      await Promise.resolve();
+    });
+    const audio = FakeAudio.instances[0];
+    expect(audio.paused).toBe(false);
+    const youtubeTrack: Track = {
+      ...track("yt:dQw4w9WgXcQ"),
+      provider: "YouTube",
+      playback: {
+        kind: "youtube",
+        videoId: "dQw4w9WgXcQ",
+        availability: "official-player",
+      },
+    };
+    await act(async () => {
+      usePlayer.getState().play([youtubeTrack, track("archive")], 0);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      rendered.container.querySelector(".youtube-player.is-active"),
+    ).toBeTruthy();
+    expect(audio.paused).toBe(true);
+    expect(playerCreateCount).toBe(1);
+    expect(youtubePlayer.loadVideoById).toHaveBeenCalledWith("dQw4w9WgXcQ");
+    expect(usePlayer.getState().status).not.toBe("error");
+
+    act(() => usePlayer.getState().toggle());
+    expect(youtubePlayer.pauseVideo).toHaveBeenCalled();
+    act(() => usePlayer.getState().toggle());
+    expect(youtubePlayer.playVideo).toHaveBeenCalled();
+    act(() => usePlayer.getState().seek(32));
+    expect(youtubePlayer.seekTo).toHaveBeenCalledWith(32, true);
+    act(() => usePlayer.getState().setVolume(0.2));
+    expect(youtubePlayer.setVolume).toHaveBeenCalledWith(20);
+
+    act(() => usePlayer.getState().next());
+    expect(youtubePlayer.pauseVideo).toHaveBeenCalled();
+    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
+      "archive",
+    );
+    expect(FakeAudio.instances).toHaveLength(1);
+    expect(audio.play).toHaveBeenCalledTimes(2);
+    expect(playerOptions).not.toBeNull();
   });
 
   it("clears the source and stops audio when the queue is cleared", () => {

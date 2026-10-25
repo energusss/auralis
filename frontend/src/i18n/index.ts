@@ -121,11 +121,19 @@ const pl = {
   trackUnavailable:
     "Dostępne tylko metadane — brak autoryzowanego źródła audio.",
   metadataOnly: "Metadane YouTube · odtwarzanie audio niedostępne",
+  officialPlayer: "Oficjalny odtwarzacz YouTube",
+  youtubeUnavailable: "Ten film jest niedostępny lub prywatny.",
+  youtubeEmbeddingBlocked:
+    "Tego filmu nie można odtworzyć w osadzonym odtwarzaczu.",
+  youtubePlayerError: "Odtwarzacz YouTube nie może odtworzyć tego filmu.",
+  youtubeAutoplayBlocked:
+    "Użyj widocznych przycisków odtwarzacza YouTube, aby rozpocząć odtwarzanie.",
   openAudio: "Muzyka na otwartych licencjach",
   openAudioNotice:
     "Osobny katalog Internet Archive. Licencja i prawa są deklarowane przez osobę przesyłającą; źródło oraz licencję sprawdź przed użyciem.",
   openAudioReady: "Audio MP3 · deklarowana licencja CC",
-  openAudioFailed: "Nie udało się rozwiązać źródła audio. Spróbuj ponownie później.",
+  openAudioFailed:
+    "Nie udało się rozwiązać źródła audio. Spróbuj ponownie później.",
   openAudioSource: "Otwórz źródło i sprawdź deklarowaną licencję",
 };
 const en: typeof pl = {
@@ -248,11 +256,18 @@ const en: typeof pl = {
   continueGoogle: "Continue with Google",
   trackUnavailable: "Metadata only — no authorized audio source is available.",
   metadataOnly: "YouTube metadata · audio playback unavailable",
+  officialPlayer: "Official YouTube player",
+  youtubeUnavailable: "This video is unavailable or private.",
+  youtubeEmbeddingBlocked: "This video cannot be played in an embedded player.",
+  youtubePlayerError: "The YouTube player could not play this video.",
+  youtubeAutoplayBlocked:
+    "Use the visible YouTube player controls to start playback.",
   openAudio: "Open audio",
   openAudioNotice:
     "Separate Internet Archive catalog. Rights and license are uploader-declared; review the source and license before use.",
   openAudioReady: "MP3 audio · declared CC license",
-  openAudioFailed: "Could not resolve this audio source. Please try again later.",
+  openAudioFailed:
+    "Could not resolve this audio source. Please try again later.",
   openAudioSource: "Open the source and review the declared license",
 };
 i18n.use(initReactI18next).init({

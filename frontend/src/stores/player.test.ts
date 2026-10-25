@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { moveItem, nextQueueIndex, usePlayer } from "./player";
 import type { Track } from "../types/music";
+import { resetYouTubeRuntimeForTests } from "../services/youtubeRuntime";
 const track = (id: string): Track => ({
   id,
   title: id,
@@ -15,7 +16,8 @@ const track = (id: string): Track => ({
   provider: "test",
   playback: { kind: "audio", url: "https://example.com/test.mp3" },
 });
-beforeEach(() =>
+beforeEach(() => {
+  resetYouTubeRuntimeForTests();
   usePlayer.setState({
     queue: [],
     index: 0,
@@ -24,8 +26,8 @@ beforeEach(() =>
     repeat: "none",
     shuffle: false,
     loadId: 0,
-  }),
-);
+  });
+});
 describe("queue transitions", () => {
   it("stops at end unless repeat-all is enabled", () => {
     expect(nextQueueIndex(2, 3, false, "none")).toBe(-1);
@@ -96,6 +98,34 @@ describe("queue transitions", () => {
     usePlayer.getState().play([metadata]);
     usePlayer.getState().enqueue(metadata);
     expect(usePlayer.getState().queue).toEqual([]);
+  });
+  it("accepts official YouTube embeds in mixed-provider queues", () => {
+    const youtube = {
+      ...track("yt:dQw4w9WgXcQ"),
+      provider: "YouTube",
+      playback: {
+        kind: "youtube",
+        videoId: "dQw4w9WgXcQ",
+        availability: "official-player",
+      },
+    } as Track;
+    const archive = {
+      ...track("ia:archive-track"),
+      provider: "Internet Archive",
+    };
+    usePlayer.getState().play([youtube, archive]);
+    expect(usePlayer.getState().queue.map((item) => item.id)).toEqual([
+      youtube.id,
+      archive.id,
+    ]);
+    usePlayer.getState().next();
+    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
+      archive.id,
+    );
+    usePlayer.getState().previous();
+    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
+      youtube.id,
+    );
   });
   it("previous seeks to beginning after three seconds", () => {
     usePlayer.getState().play([track("a"), track("b")], 1);

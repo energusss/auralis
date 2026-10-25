@@ -9,6 +9,14 @@ import {
   setAudioVolume,
   stopAudio,
 } from "../services/audioRuntime";
+import {
+  deactivateYouTube,
+  pauseYouTube,
+  playYouTube,
+  seekYouTube,
+  selectYouTubeTrack,
+  setYouTubeVolume,
+} from "../services/youtubeRuntime";
 export type Repeat = "none" | "one" | "all";
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
 export function nextQueueIndex(
@@ -32,6 +40,35 @@ export function moveItem<T>(items: T[], from: number, to: number): T[] {
   const [item] = result.splice(from, 1);
   result.splice(to, 0, item);
   return result;
+}
+function selectTrack(
+  track: Track,
+  loadId: number,
+  volume: number,
+  muted: boolean,
+  shouldPlay: boolean,
+) {
+  if (track.playback.kind === "youtube" && track.playback.videoId) {
+    pauseAudio();
+    selectYouTubeTrack(
+      track.playback.videoId,
+      `${track.id}:${loadId}`,
+      shouldPlay,
+      volume,
+      muted,
+    );
+  } else {
+    deactivateYouTube();
+    selectAudioTrack(track, loadId, volume, muted, shouldPlay);
+  }
+}
+function pauseCurrent(track: Track | undefined) {
+  if (track?.playback.kind === "youtube") pauseYouTube();
+  else pauseAudio();
+}
+function resumeCurrent(track: Track | undefined) {
+  if (track?.playback.kind === "youtube") playYouTube();
+  else resumeAudio();
 }
 interface PlayerState {
   queue: Track[];
@@ -101,7 +138,7 @@ export const usePlayer = create<PlayerState>()(
           seekRequest: null,
         }));
         const state = get();
-        selectAudioTrack(
+        selectTrack(
           state.queue[state.index],
           state.loadId,
           state.volume,
@@ -120,23 +157,23 @@ export const usePlayer = create<PlayerState>()(
           ...(s.status === "error" ? { loadId: s.loadId + 1 } : {}),
         }));
         const state = get();
-        if (wasPlaying) pauseAudio();
+        if (wasPlaying) pauseCurrent(state.queue[state.index]);
         else if (wasError)
-          selectAudioTrack(
+          selectTrack(
             state.queue[state.index],
             state.loadId,
             state.volume,
             state.muted,
             true,
           );
-        else resumeAudio();
+        else resumeCurrent(state.queue[state.index]);
       },
       next: () => {
         const s = get();
         const i = nextQueueIndex(s.index, s.queue.length, s.shuffle, s.repeat);
         if (i < 0) {
           set({ playing: false, status: "paused" });
-          pauseAudio();
+          pauseCurrent(s.queue[s.index]);
           return;
         }
         set({
@@ -150,7 +187,7 @@ export const usePlayer = create<PlayerState>()(
           seekRequest: null,
         });
         const state = get();
-        selectAudioTrack(
+        selectTrack(
           state.queue[i],
           state.loadId,
           state.volume,
@@ -177,7 +214,7 @@ export const usePlayer = create<PlayerState>()(
           seekRequest: null,
         });
         const state = get();
-        selectAudioTrack(
+        selectTrack(
           state.queue[i],
           state.loadId,
           state.volume,
@@ -196,7 +233,7 @@ export const usePlayer = create<PlayerState>()(
             seekRequest: null,
           });
           const state = get();
-          selectAudioTrack(
+          selectTrack(
             state.queue[state.index],
             state.loadId,
             state.volume,
@@ -212,17 +249,22 @@ export const usePlayer = create<PlayerState>()(
             id: (s.seekRequest?.id ?? 0) + 1,
           },
         }));
-        seekAudio(get().seekRequest?.position ?? seconds);
+        const state = get();
+        if (state.queue[state.index]?.playback.kind === "youtube")
+          seekYouTube(state.seekRequest?.position ?? seconds);
+        else seekAudio(state.seekRequest?.position ?? seconds);
       },
       setVolume: (volume) => {
         const value = Math.max(0, Math.min(1, volume));
         set({ volume: value, muted: false });
         setAudioVolume(value, false);
+        setYouTubeVolume(value, false);
       },
       toggleMute: () => {
         const muted = !get().muted;
         set({ muted });
         setAudioVolume(get().volume, muted);
+        setYouTubeVolume(get().volume, muted);
       },
       toggleShuffle: () => set((s) => ({ shuffle: !s.shuffle })),
       cycleRepeat: () =>
@@ -255,7 +297,7 @@ export const usePlayer = create<PlayerState>()(
             loadId: s.loadId + 1,
           });
           const state = get();
-          selectAudioTrack(
+          selectTrack(
             state.queue[nextIndex],
             state.loadId,
             state.volume,
@@ -286,6 +328,7 @@ export const usePlayer = create<PlayerState>()(
           loadId: s.loadId + 1,
         }));
         stopAudio();
+        deactivateYouTube();
       },
       sync: (position, duration) =>
         set({

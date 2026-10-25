@@ -2,6 +2,14 @@
 
 Research performed 25 October 2026. This is a targeted source and architecture review, not a full audit or a claim that the reference applications were built or run. No source code from these projects was copied into Auralis. Repository HEADs can change; the inspected tree identifiers below record this review.
 
+## Auralis v2.3 playback restoration
+
+Current implementation: YouTube Data API results marked `official-player` are routed to one app-shell-lifetime IFrame API player, visible in a responsive dock whenever a YouTube item is active. The dock remains mounted through route changes and meets the API's 200×200 minimum viewport. Queue controls, seek, volume, Media Session, and audible-time history are synchronized with its player state. Direct audio (including resolved Internet Archive MP3s) continues through the existing singleton HTMLAudioElement. A mixed queue pauses the outgoing adapter before switching to the other provider. Metadata-only records remain unplayable.
+
+This restores the earlier Auralis IFrame adapter behavior from commit `0b9fd5e`, with the fuller floating player presentation last present in `159ddda`, without restoring their older per-track audio lifecycle. YouTube playback is official embedded **video** playback; it is not audio-only/background YouTube Music playback. Videos may be unavailable, blocked from embedding, region-restricted, or stopped by browser/OS policies. See the Google IFrame Player requirements: its viewport must be at least 200×200 pixels; the current dock is visible and larger than that minimum while the provider is active.
+
+The v2.2 paragraphs below describe the earlier metadata-only release decision and source research, not the current queue behavior. That release boundary remains relevant to direct-audio extraction: Auralis does not extract YouTube CDN URLs or copy GPL SimpMusic code.
+
 ## Reference projects
 
 ### 1. th-ch/youtube-music → Pear Desktop
@@ -28,7 +36,7 @@ No SimpMusic or core source was copied. Using GPL-3.0 implementation code in Aur
 
 Sources: [SimpMusic commit](https://github.com/maxrave-dev/SimpMusic/tree/068d74435f0cf0e8552af3da07879eafd328fea7), [submodule pointer](https://github.com/maxrave-dev/SimpMusic/blob/068d74435f0cf0e8552af3da07879eafd328fea7/.gitmodules), [pinned core stream repository](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/data/src/commonMain/kotlin/com/maxrave/data/repository/StreamRepositoryImpl.kt), [player response scraper](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/service/kotlinYtmusicScraper/src/commonMain/kotlin/com/maxrave/kotlinytmusicscraper/YouTube.kt), [Android extractor](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/service/kotlinYtmusicScraper/src/androidMain/kotlin/com/maxrave/kotlinytmusicscraper/extractor/Extractor.android.kt), [JVM extractor](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/service/kotlinYtmusicScraper/src/jvmMain/kotlin/com/maxrave/kotlinytmusicscraper/extractor/Extractor.jvm.kt), [audio format model](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/domain/src/commonMain/kotlin/com/maxrave/domain/data/model/streams/AudioStream.kt), [Media3 service](https://github.com/maxrave-dev/core/blob/2894e549763b8a68225b4456d3290f3227bdbb01/media/media3/src/main/java/com/maxrave/media3/service/SimpleMediaService.kt).
 
-## Auralis v2.2 playback implementation
+## Auralis v2.2 playback implementation (historical)
 
 The existing YouTube Data API path remains metadata-only. Its video IDs are not direct audio sources. Auralis does not run SimpMusic's YouTube CDN extraction or cipher-solving stack in this browser application: the URLs are short-lived/context-bound, may fail with 403, and are not a supported direct-audio response. No GPL implementation code was copied.
 

@@ -43,17 +43,27 @@ export interface Track {
 export function isPlayableTrack(value: unknown): value is Track {
   if (!value || typeof value !== "object") return false;
   const track = value as Partial<Track>;
+  if (
+    typeof track.id !== "string" ||
+    track.id.length === 0 ||
+    typeof track.title !== "string" ||
+    typeof track.artist !== "string" ||
+    !track.playback
+  )
+    return false;
+  const playback = track.playback;
+  if (playback.kind === "youtube")
+    return (
+      playback.availability === "official-player" &&
+      typeof playback.videoId === "string" &&
+      /^[A-Za-z0-9_-]{11}$/.test(playback.videoId)
+    );
   return (
-    typeof track.id === "string" &&
-    track.id.length > 0 &&
-    typeof track.title === "string" &&
-    typeof track.artist === "string" &&
-    !!track.playback &&
-    track.playback.kind === "audio" &&
-    typeof track.playback.url === "string" &&
-    track.playback.url.startsWith("https://") &&
-    (track.playback.availability === undefined ||
-      track.playback.availability === "playable")
+    playback.kind === "audio" &&
+    typeof playback.url === "string" &&
+    playback.url.startsWith("https://") &&
+    (playback.availability === undefined ||
+      playback.availability === "playable")
   );
 }
 export function isResolvableTrack(value: unknown): value is Track {
