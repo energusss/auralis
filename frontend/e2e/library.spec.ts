@@ -54,12 +54,12 @@ test("guest can search, like, create and reorder a persistent playlist", async (
     .click();
   await page.getByRole("button", { name: "Browser test", exact: true }).click();
   await navigation(page, "Browser test");
-  const sortableRows = page.locator(".sortable-row");
-  await expect(sortableRows).toHaveCount(2);
-  await sortableRows
-    .nth(0)
-    .locator(".drag-handle")
-    .dragTo(sortableRows.nth(1).locator(".drag-handle"));
+  const handle = page.getByLabel("Reorder", { exact: true }).first();
+  await handle.focus();
+  await page.keyboard.press("Space");
+  await expect(handle).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
     "Monkeys Spinning Monkeys",
   );

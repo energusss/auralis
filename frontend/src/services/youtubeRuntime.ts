@@ -182,7 +182,7 @@ export function playYouTube() {
 
 export function pauseYouTube() {
   if (pending) pending.autoplay = false;
-  player?.pauseVideo();
+  if (player && typeof player.pauseVideo === "function") player.pauseVideo();
 }
 
 /** Pauses before handing the sole audible slot to the HTMLAudioElement adapter. */
@@ -191,8 +191,8 @@ export function deactivateYouTube() {
   active = false;
   pending = null;
   if (!wasActive) return;
-  if (player?.stopVideo) player.stopVideo();
-  else player?.pauseVideo();
+  if (player && typeof player.stopVideo === "function") player.stopVideo();
+  else if (player && typeof player.pauseVideo === "function") player.pauseVideo();
 }
 
 export function seekYouTube(seconds: number) {
