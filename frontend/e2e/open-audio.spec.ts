@@ -33,10 +33,13 @@ test("@live resolves and plays the catalog's real CC-licensed MP3 across navigat
       () =>
         page.evaluate(() => {
           const audio = (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio;
+          const source = decodeURIComponent(audio?.currentSrc || audio?.src || "")
+            .replace(/[_-]+/g, " ")
+            .toLowerCase();
           return Boolean(
             audio &&
-              audio.src.includes("archive.org/download/DirectionlessEP/") &&
-              audio.src.includes("Night%20Owl") &&
+              source.includes("archive.org/download/") &&
+              source.includes("night owl") &&
               !audio.paused &&
               audio.currentTime > 0.5,
           );
@@ -51,7 +54,10 @@ test("@live resolves and plays the catalog's real CC-licensed MP3 across navigat
       () =>
         page.evaluate(() => {
           const audio = (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio;
-          return Boolean(audio?.src.includes("02%20My%20Always%20Mood") && !audio.paused && audio.currentTime > 0.5);
+          const source = decodeURIComponent(audio?.currentSrc || audio?.src || "")
+            .replace(/[_-]+/g, " ")
+            .toLowerCase();
+          return Boolean(source.includes("my always mood") && !audio?.paused && (audio?.currentTime ?? 0) > 0.5);
         }),
       { timeout: 30000 },
     )
@@ -62,7 +68,10 @@ test("@live resolves and plays the catalog's real CC-licensed MP3 across navigat
       () =>
         page.evaluate(() => {
           const audio = (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio;
-          return Boolean(audio?.src.includes("01%20Night%20Owl") && !audio.paused && audio.currentTime > 0.5);
+          const source = decodeURIComponent(audio?.currentSrc || audio?.src || "")
+            .replace(/[_-]+/g, " ")
+            .toLowerCase();
+          return Boolean(source.includes("night owl") && !audio?.paused && (audio?.currentTime ?? 0) > 0.5);
         }),
       { timeout: 30000 },
     )

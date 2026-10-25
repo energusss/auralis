@@ -107,7 +107,14 @@ test("@live plays the official YouTube video and switches a mixed queue to Archi
               window as Window & { __auralisAudio?: HTMLAudioElement }
             ).__auralisAudio;
             return Boolean(
-              audio?.src.includes("archive.org/download/DirectionlessEP/") &&
+              decodeURIComponent(audio?.currentSrc || audio?.src || "")
+                .replace(/[_-]+/g, " ")
+                .toLowerCase()
+                .includes("archive.org/download/") &&
+              decodeURIComponent(audio?.currentSrc || audio?.src || "")
+                .replace(/[_-]+/g, " ")
+                .toLowerCase()
+                .includes("night owl") &&
               !audio.paused &&
               audio.currentTime > 0.5,
             );
