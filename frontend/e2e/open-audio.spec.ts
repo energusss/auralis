@@ -45,6 +45,29 @@ test("@live resolves and plays the catalog's real CC-licensed MP3 across navigat
     )
     .toBe(true);
 
+  await page.locator(".player-bar").getByRole("button", { name: "Następny" }).click();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const audio = (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio;
+          return Boolean(audio?.src.includes("02%20My%20Always%20Mood") && !audio.paused && audio.currentTime > 0.5);
+        }),
+      { timeout: 30000 },
+    )
+    .toBe(true);
+  await page.locator(".player-bar").getByRole("button", { name: "Poprzedni" }).click();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const audio = (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio;
+          return Boolean(audio?.src.includes("01%20Night%20Owl") && !audio.paused && audio.currentTime > 0.5);
+        }),
+      { timeout: 30000 },
+    )
+    .toBe(true);
+
   const before = await page.evaluate(
     () => (window as Window & { __auralisAudio?: HTMLAudioElement }).__auralisAudio?.currentTime ?? 0,
   );
