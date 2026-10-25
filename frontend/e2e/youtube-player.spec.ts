@@ -37,26 +37,15 @@ test("@live plays the official YouTube video and switches a mixed queue to Archi
       availability: "official-player",
     },
   };
-  const archive = {
-    id: "ia:DirectionlessEP/01 Night Owl.mp3",
-    title: "Night Owl",
-    artist: "Directionless",
-    artistId: "ia:Directionless",
-    album: "Directionless EP",
-    albumId: "ia:DirectionlessEP",
-    artwork: "https://archive.org/services/img/DirectionlessEP",
-    duration: 194,
-    genre: "Electronic",
-    provider: "Internet Archive",
-    playback: {
-      kind: "audio",
-      url: "https://archive.org/download/DirectionlessEP/01%20Night%20Owl.mp3",
-      mediaType: "audio/mpeg",
-      availability: "playable",
-      licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
-      sourcePage: "https://archive.org/details/DirectionlessEP",
-    },
-  };
+  const archiveSearch = await page.request.get(
+    "http://127.0.0.1:5173/api/music/open-audio/search?q=Directionless%20EP",
+  );
+  expect(archiveSearch.ok()).toBe(true);
+  const archiveResults = await archiveSearch.json();
+  const archive = archiveResults.tracks.find((item: { title: string }) =>
+    item.title.includes("Night Owl"),
+  );
+  expect(archive?.playback.availability).toBe("resolvable");
   await page.route("**/api/music/search?**", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -109,22 +98,42 @@ test("@live plays the official YouTube video and switches a mixed queue to Archi
     .locator(".player-bar")
     .getByRole("button", { name: "Następny" })
     .click();
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() => {
-          const audio = (
-            window as Window & { __auralisAudio?: HTMLAudioElement }
-          ).__auralisAudio;
-          return Boolean(
-            audio?.src.includes("archive.org/download/DirectionlessEP/") &&
-            !audio.paused &&
-            audio.currentTime > 0.5,
-          );
-        }),
-      { timeout: 45000 },
-    )
-    .toBe(true);
+  try {
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const audio = (
+              window as Window & { __auralisAudio?: HTMLAudioElement }
+            ).__auralisAudio;
+            return Boolean(
+              audio?.src.includes("archive.org/download/DirectionlessEP/") &&
+              !audio.paused &&
+              audio.currentTime > 0.5,
+            );
+          }),
+        { timeout: 45000 },
+      )
+      .toBe(true);
+  } catch (error) {
+    const diagnostics = await page.evaluate(() => {
+      const audio = (window as Window & { __auralisAudio?: HTMLAudioElement })
+        .__auralisAudio;
+      return {
+        src: audio?.currentSrc || audio?.src,
+        paused: audio?.paused,
+        currentTime: audio?.currentTime,
+        readyState: audio?.readyState,
+        networkState: audio?.networkState,
+        error: audio?.error?.message,
+        track: document.querySelector(".player-track")?.textContent,
+      };
+    });
+    console.log(
+      `Mixed-provider audio diagnostics: ${JSON.stringify(diagnostics)}`,
+    );
+    throw error;
+  }
   await expect(page.locator(".player-track")).toContainText("Night Owl");
 
   await page
