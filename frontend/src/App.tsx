@@ -469,12 +469,16 @@ function HomePage({ discover = false }: { discover?: boolean }) {
       <Section title={t("artists")}>
         <ArtistCards artists={data.artists} />
       </Section>
-      {data.trending.length > 0 && <Section title={t("trending")}>
-        <TrackList tracks={data.trending.slice(0, 5)} />
-      </Section>}
-      {data.newReleases.length > 0 && <Section title={t("newReleases")}>
-        <AlbumCards albums={data.newReleases} />
-      </Section>}
+      {data.trending.length > 0 && (
+        <Section title={t("trending")}>
+          <TrackList tracks={data.trending.slice(0, 5)} />
+        </Section>
+      )}
+      {data.newReleases.length > 0 && (
+        <Section title={t("newReleases")}>
+          <AlbumCards albums={data.newReleases} />
+        </Section>
+      )}
       <Section title={t("genres")}>
         <div className="chips">
           {[...new Set(data.featured.map((t) => t.genre))].map((g) => (
@@ -510,6 +514,17 @@ function SearchPage() {
     new URLSearchParams(location.search).get("q") || "",
   );
   const [term, setTerm] = useState(q);
+  useEffect(() => {
+    if (service.getSession())
+      service
+        .api<string[]>("/search-history")
+        .then((values) => {
+          setRecent(values);
+          localStorage.setItem("auralis-searches", JSON.stringify(values));
+        })
+        .catch(() => {});
+  }, []);
+
   const [type, setType] = useState("all");
   const [recent, setRecent] = useState<string[]>(
     JSON.parse(localStorage.getItem("auralis-searches") || "[]"),
@@ -1541,14 +1556,15 @@ export default function App() {
   }, [toast]);
   useEffect(() => setMobile(false), [location.pathname]);
   useEffect(() => {
-    const theme = localStorage.getItem("auralis-theme") || "dark";
-    const apply = () =>
-      (document.documentElement.dataset.theme =
+    const apply = () => {
+      const theme = localStorage.getItem("auralis-theme") || "dark";
+      document.documentElement.dataset.theme =
         theme === "system"
           ? matchMedia("(prefers-color-scheme: light)").matches
             ? "light"
             : "dark"
-          : theme);
+          : theme;
+    };
     apply();
     document.documentElement.style.setProperty(
       "--accent",
