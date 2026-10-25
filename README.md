@@ -1,3 +1,3 @@
 # AURALIS
 
-Source import is in progress. The original Git history will be restored from the verified project bundle.
+Importing the original verified Git history. This temporary bootstrap is preserved on publication/bootstrap.

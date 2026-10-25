@@ -1,0 +1,25 @@
+name: Import original AURALIS history
+on:
+  push:
+    paths:
+      - ".github/workflows/import-source.yml"
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and restore the original source commits
+        env:
+          EXPECTED_SOURCE_HEAD: d93c94eaeaeb7e67fcbe23e8ee64ba3789b0b615
+        run: |
+          set -euo pipefail
+          git bundle verify bootstrap/auralis-history.bundle
+          git fetch bootstrap/auralis-history.bundle refs/heads/main:refs/heads/source-import
+          test "$(git rev-parse source-import)" = "$EXPECTED_SOURCE_HEAD"
+          git branch publication/bootstrap "$GITHUB_SHA"
+          git push origin publication/bootstrap
+          git push origin refs/heads/source-import:refs/heads/main --force-with-lease=refs/heads/main:"$GITHUB_SHA"
