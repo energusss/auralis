@@ -58,8 +58,10 @@ Published-code CI: https://github.com/energusss/auralis/actions/runs/40219895569
 | Backend API build | PASS | .NET 8, 0 warnings and 0 errors |
 | Backend tests | PASS | 14 xUnit tests, including YouTube all-category classification and Google sign-in disabled-state behavior |
 | Git diff hygiene | PASS | `git diff --check` |
-| Playwright locally | BLOCKED | Four desktop/mobile specs attempted. No Chromium executable was present; browser download returned a truncated archive in this Work environment. The committed CI installs Chromium and will provide an independent run. |
+| Playwright desktop and mobile | PASS | GitHub Actions installed Chromium and passed all 4 end-to-end journeys (2 journeys across desktop and iPhone viewport) in run [40227102638](https://github.com/energusss/auralis/actions/runs/40227102638). The local Work container still has no usable browser binary; its download was truncated. |
 | Google OAuth live roundtrip | NOT RUN | No Google OAuth client ID was supplied. The secure token-validation and account-linking path is implemented; configure the matching public/client IDs as shown in README. |
 | Live YouTube iframe | NOT RUN | No YouTube Data API credential/video was configured. The official iframe remains visible and interactive in expanded Now Playing; close pauses playback. |
 
 Changes add stable typed artist/channel discovery, artist profile links from track rows and current playback, the localized “Playlisty / Playlists” search label, AURALIS favicon, expanded-only official YouTube video presentation, and Google Identity Services authentication backed by verified Google OIDC tokens. Existing local password login and library schema are retained; the new nullable unique Google subject is added by an EF migration.
+
+Full published-code CI: [run 40227102638](https://github.com/energusss/auralis/actions/runs/40227102638) — frontend build, 18 unit/component tests, 4 desktop/mobile Playwright journeys, backend build, 14 xUnit tests, PostgreSQL migration and account persistence smoke check all passed.
