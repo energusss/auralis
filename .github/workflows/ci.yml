@@ -30,6 +30,20 @@ jobs:
           if-no-files-found: ignore
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: auralis_ci
+          POSTGRES_USER: auralis_ci
+          POSTGRES_PASSWORD: disposable_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U auralis_ci -d auralis_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -38,6 +52,22 @@ jobs:
       - run: dotnet restore backend/Auralis.Tests
       - run: dotnet build backend/Auralis.Api --configuration Release --no-restore
       - run: dotnet test backend/Auralis.Tests --configuration Release --logger 'trx;LogFileName=backend.trx'
+      - name: Apply PostgreSQL migrations and verify HTTP persistence
+        env:
+          DATABASE_URL: Host=127.0.0.1;Port=5432;Database=auralis_ci;Username=auralis_ci;Password=disposable_ci_only
+          JWT_KEY: ci-only-disposable-jwt-secret-at-least-32-characters
+          ASPNETCORE_URLS: http://127.0.0.1:5080
+        run: |
+          dotnet backend/Auralis.Api/bin/Release/net8.0/Auralis.Api.dll > /tmp/auralis-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:5080/health > /dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then cat /tmp/auralis-api.log; exit 1; fi
+          python3 scripts/smoke-api.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
