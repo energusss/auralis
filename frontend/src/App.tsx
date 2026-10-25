@@ -71,7 +71,7 @@ import {
   time,
 } from "./components/ui";
 import { SortableList } from "./components/SortableList";
-import { isPlayableTrack } from "./types/music";
+import { isPlayableTrack, isResolvableTrack } from "./types/music";
 import type {
   Track,
   Playlist,
@@ -113,19 +113,40 @@ function TrackRow({
   const { t } = useTranslation();
   const player = usePlayer();
   const { lib, like, choosePlaylist, notify } = useApp();
+  const [resolving, setResolving] = useState(false);
   const active = player.queue[player.index]?.id === track.id;
   const playable = isPlayableTrack(track);
+  const resolvable = isResolvableTrack(track);
+  const canPlay = playable || resolvable;
+  const resolveTracks = async (selection: Track[], selectedIndex: number) => {
+    if (!canPlay) {
+      notify(t("trackUnavailable"));
+      return null;
+    }
+    setResolving(true);
+    try {
+      return await service.preparePlaybackQueue(selection, selectedIndex);
+    } catch {
+      notify(t("openAudioFailed"));
+      return null;
+    } finally {
+      setResolving(false);
+    }
+  };
   return (
     <div className={`track-row ${active ? "selected" : ""}`}>
       <button
         className="track-main"
         onClick={
           onPlay ||
-          (() =>
-            playable
-              ? player.play(tracks, index)
-              : notify(t("trackUnavailable")))
+          (() => {
+            if (!canPlay) return notify(t("trackUnavailable"));
+            void resolveTracks(tracks, index).then((items) => {
+              if (items) player.play(items, index);
+            });
+          })
         }
+        disabled={resolving}
       >
         <span className="track-number">
           {active && player.playing ? (
@@ -142,7 +163,9 @@ function TrackRow({
         <span>
           <strong>{track.title}</strong>
           {!playable && (
-            <small className="track-availability">{t("metadataOnly")}</small>
+            <small className="track-availability">
+              {resolvable ? t("openAudioReady") : t("metadataOnly")}
+            </small>
           )}
         </span>
       </button>
@@ -165,6 +188,18 @@ function TrackRow({
       <span className="track-time">
         {track.duration ? time(track.duration) : "—"}
       </span>
+      {resolvable && track.playback.sourcePage && (
+        <a
+          className="track-source"
+          href={track.playback.sourcePage}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={track.playback.licenseUrl}
+          aria-label={t("openAudioSource")}
+        >
+          {t("license")}
+        </a>
+      )}
       <IconButton
         label={t("favorites")}
         active={lib.favorites.some((x) => x.id === track.id)}
@@ -180,10 +215,19 @@ function TrackRow({
       </IconButton>
       <IconButton
         label={t("addQueue")}
-        disabled={!playable}
+        disabled={!canPlay || resolving}
         onClick={() => {
-          player.enqueue(track);
-          notify(t("added"));
+          if (playable) {
+            player.enqueue(track);
+            notify(t("added"));
+          } else {
+            void resolveTracks([track], 0).then((items) => {
+              if (items) {
+                player.enqueue(items[0]);
+                notify(t("added"));
+              }
+            });
+          }
         }}
       >
         <ListMusic size={17} />
@@ -605,18 +649,29 @@ function SearchPage() {
         )}
       </div>
       <div className="chips filters">
-        {["all", "songs", "artists", "albums", "playlists", "videos"].map(
-          (key) => (
+        {[
+          ["all", "all"],
+          ["songs", "songs"],
+          ["artists", "artists"],
+          ["albums", "albums"],
+          ["playlists", "playlists"],
+          ["videos", "videos"],
+          ["open-audio", "openAudio"],
+        ].map(
+          ([key, label]) => (
             <button
               className={`chip ${type === key ? "chosen" : ""}`}
               key={key}
               onClick={() => setType(key)}
             >
-              {t(key)}
+              {t(label)}
             </button>
           ),
         )}
       </div>
+      {type === "open-audio" && (
+        <p className="track-availability">{t("openAudioNotice")}</p>
+      )}
       {recent.length > 0 && !term && (
         <Section title={t("searchRecent")}>
           <div className="chips">
@@ -848,6 +903,17 @@ function DetailsPage({
     );
   const title = "name" in data ? data.name : data.title;
   const tracks = data.tracks;
+  const playIndices = tracks
+    .map((track, index) => ({ track, index }))
+    .filter(({ track }) => isPlayableTrack(track) || isResolvableTrack(track))
+    .map(({ index }) => index);
+  const playTracks = async (index: number) => {
+    try {
+      player.play(await service.preparePlaybackQueue(tracks, index), index);
+    } catch {
+      notify(t("openAudioFailed"));
+    }
+  };
   const isSaved =
     kind === "artist"
       ? lib.savedArtists.some((a) => a.id === id)
@@ -894,9 +960,9 @@ function DetailsPage({
           </small>
           <div className="hero-actions">
             <button
-              disabled={!tracks.some(isPlayableTrack)}
+              disabled={!playIndices.length}
               className="primary"
-              onClick={() => player.play(tracks)}
+              onClick={() => void playTracks(playIndices[0] ?? 0)}
             >
               <Play size={18} fill="currentColor" />
               {t("play")}
@@ -905,9 +971,11 @@ function DetailsPage({
               label={t("shuffle")}
               onClick={() => {
                 if (!player.shuffle) player.toggleShuffle();
-                player.play(tracks, Math.floor(Math.random() * tracks.length));
+                void playTracks(
+                  playIndices[Math.floor(Math.random() * playIndices.length)] ?? 0,
+                );
               }}
-              disabled={!tracks.some(isPlayableTrack)}
+              disabled={!playIndices.length}
             >
               <Shuffle />
             </IconButton>

@@ -9,7 +9,9 @@ import type {
   SearchResult,
   Artist,
   Album,
+  PlaybackResolution,
 } from "../types/music";
+import { isPlayableTrack, isResolvableTrack } from "../types/music";
 export type Library = {
   favorites: Track[];
   savedArtists: ArtistSummary[];
@@ -266,6 +268,10 @@ export async function search(
   type: string,
   cursor = "",
 ): Promise<SearchResult> {
+  if (type === "open-audio")
+    return api<SearchResult>(
+      `/music/open-audio/search?q=${encodeURIComponent(q)}`,
+    );
   try {
     return await api<SearchResult>(
       `/music/search?q=${encodeURIComponent(q)}&type=${type}&cursor=${encodeURIComponent(cursor)}`,
@@ -292,6 +298,49 @@ export async function search(
       nextCursor: null,
     };
   }
+}
+export async function resolvePlayback(trackIds: string[]) {
+  return api<PlaybackResolution[]>("/music/playback/resolve", {
+    method: "POST",
+    body: JSON.stringify({ trackIds }),
+  });
+}
+export async function preparePlaybackQueue(tracks: Track[], selectedIndex: number) {
+  if (!isPlayableTrack(tracks[selectedIndex]) && !isResolvableTrack(tracks[selectedIndex]))
+    throw Error("This track has no playable audio source.");
+  const pending = tracks.filter(isResolvableTrack);
+  if (!pending.length) return tracks;
+  const results = (
+    await Promise.all(
+      Array.from({ length: Math.ceil(pending.length / 200) }, (_, index) =>
+        resolvePlayback(
+          pending.slice(index * 200, (index + 1) * 200).map((track) => track.id),
+        ),
+      ),
+    )
+  ).flat();
+  const byId = new Map(results.map((result) => [result.trackId, result]));
+  const resolved = tracks.map((track) => {
+    if (!isResolvableTrack(track)) return track;
+    const source = byId.get(track.id);
+    if (!source || source.availability !== "playable" || !source.url) return track;
+    return {
+      ...track,
+      playback: {
+        ...track.playback,
+        availability: "playable" as const,
+        url: source.url,
+        mediaType: source.mediaType,
+        codec: source.codec,
+        expiresAt: source.expiresAt,
+        licenseUrl: source.licenseUrl,
+        sourcePage: source.sourcePage,
+      },
+    };
+  });
+  if (!isPlayableTrack(resolved[selectedIndex]))
+    throw Error("The provider could not resolve this track.");
+  return resolved;
 }
 export async function artist(id: string): Promise<Artist> {
   try {

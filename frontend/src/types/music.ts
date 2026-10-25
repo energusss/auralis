@@ -4,8 +4,28 @@ export interface Playback {
   videoId?: string;
   mediaType?: string;
   expiresAt?: string;
+  codec?: string;
+  licenseUrl?: string;
+  sourcePage?: string;
   availability?:
-    "playable" | "metadata-only" | "official-player" | "unavailable";
+    | "playable"
+    | "resolvable"
+    | "metadata-only"
+    | "official-player"
+    | "unavailable";
+}
+export interface PlaybackResolution {
+  trackId: string;
+  provider: string;
+  availability: "playable" | "unavailable";
+  url?: string;
+  mediaType?: string;
+  codec?: string;
+  expiresAt?: string;
+  errorCategory?: string;
+  retryEligible: boolean;
+  licenseUrl?: string;
+  sourcePage?: string;
 }
 export interface Track {
   id: string;
@@ -34,6 +54,19 @@ export function isPlayableTrack(value: unknown): value is Track {
     track.playback.url.startsWith("https://") &&
     (track.playback.availability === undefined ||
       track.playback.availability === "playable")
+  );
+}
+export function isResolvableTrack(value: unknown): value is Track {
+  if (!value || typeof value !== "object") return false;
+  const track = value as Partial<Track>;
+  return (
+    typeof track.id === "string" &&
+    track.id.startsWith("ia:") &&
+    !!track.playback &&
+    track.playback.kind === "audio" &&
+    track.playback.availability === "resolvable" &&
+    typeof track.playback.licenseUrl === "string" &&
+    typeof track.playback.sourcePage === "string"
   );
 }
 export interface ArtistSummary {
