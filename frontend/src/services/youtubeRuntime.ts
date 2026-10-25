@@ -60,6 +60,7 @@ interface PendingTrack {
 let apiPromise: Promise<YouTubeApi> | null = null;
 let player: YouTubePlayer | null = null;
 let playerHost: HTMLElement | null = null;
+let ready = false;
 let events: YouTubeRuntimeEvents | null = null;
 let pending: PendingTrack | null = null;
 let active = false;
@@ -100,7 +101,7 @@ function loadApi(): Promise<YouTubeApi> {
 }
 
 function applyPendingTrack() {
-  if (!player || !pending) return;
+  if (!player || !ready || !pending) return;
   const request = pending;
   pending = null;
   appliedKey = request.key;
@@ -139,6 +140,7 @@ export function initializeYouTubePlayer(
         },
         events: {
           onReady: () => {
+            ready = true;
             const iframe = player?.getIframe?.();
             if (iframe) iframe.title = "YouTube video player";
             events?.onReady();
@@ -162,18 +164,18 @@ export function selectYouTubeTrack(
 ) {
   active = true;
   pending = { videoId, key, autoplay, volume, muted };
-  if (!player) return;
+  if (!player || !ready) return;
   if (appliedKey === key) {
     pending = null;
-    if (autoplay) player.playVideo();
-    else player.pauseVideo();
+    if (autoplay && typeof player.playVideo === "function") player.playVideo();
+    else if (!autoplay && typeof player.pauseVideo === "function") player.pauseVideo();
     return;
   }
   applyPendingTrack();
 }
 
 export function playYouTube() {
-  if (player && active) player.playVideo();
+  if (player && ready && active && typeof player.playVideo === "function") player.playVideo();
   else if (pending) {
     pending.autoplay = true;
     applyPendingTrack();
@@ -182,7 +184,7 @@ export function playYouTube() {
 
 export function pauseYouTube() {
   if (pending) pending.autoplay = false;
-  if (player && typeof player.pauseVideo === "function") player.pauseVideo();
+  if (ready && player && typeof player.pauseVideo === "function") player.pauseVideo();
 }
 
 /** Pauses before handing the sole audible slot to the HTMLAudioElement adapter. */
@@ -190,7 +192,7 @@ export function deactivateYouTube() {
   const wasActive = active || pending !== null;
   active = false;
   pending = null;
-  if (!wasActive) return;
+  if (!wasActive || !ready) return;
   if (player && typeof player.stopVideo === "function") player.stopVideo();
   else if (player && typeof player.pauseVideo === "function") player.pauseVideo();
 }
@@ -240,6 +242,7 @@ export function resetYouTubeRuntimeForTests() {
   player?.destroy();
   player = null;
   playerHost = null;
+  ready = false;
   events = null;
   pending = null;
   active = false;

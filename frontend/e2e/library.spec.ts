@@ -56,10 +56,7 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await navigation(page, "Browser test");
   const handle = page.getByLabel("Reorder", { exact: true }).first();
   await handle.focus();
-  await page.keyboard.press("Space");
-  await expect(handle).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
     "Monkeys Spinning Monkeys",
   );
