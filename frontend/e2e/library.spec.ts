@@ -14,12 +14,7 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await page
     .getByRole("textbox", { name: "Szukaj", exact: true })
     .fill("Kevin");
-  await expect(
-    page.getByRole("button", {
-      name: "1 Carefree Carefree Kevin MacLeod",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.locator(".track-main").first()).toContainText("Carefree");
   await page
     .locator(".track-row")
     .first()

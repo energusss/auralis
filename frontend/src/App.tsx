@@ -1825,7 +1825,7 @@ export default function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
           >
-            <Routes>
+            <Routes location={location}>
               <Route path="/" element={<HomePage />} />
               <Route path="/discover" element={<HomePage discover />} />
               <Route path="/search" element={<SearchPage />} />
