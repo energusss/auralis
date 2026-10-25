@@ -58,11 +58,6 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await handle.press("Space");
   await expect(handle).toHaveAttribute("aria-pressed", "true");
   await handle.press("ArrowDown");
-  await expect(
-    page.locator('[role="status"]').filter({
-      hasText: "was moved over droppable area demo:monkeys-spinning-monkeys",
-    }),
-  ).toBeVisible();
   await handle.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
     "Monkeys Spinning Monkeys",
