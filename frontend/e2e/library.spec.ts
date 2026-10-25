@@ -1,8 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 async function navigation(page: Page, name: string) {
+  const mobileNavigation = page.locator(".mobile-bottom-nav");
+  const mobileLink = mobileNavigation.getByRole("link", { name, exact: true });
+  if (await mobileNavigation.isVisible() && await mobileLink.count()) {
+    await mobileLink.click();
+    return;
+  }
   const menu = page.getByRole("button", { name: "Menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("link", { name, exact: true }).click();
+  const sidebar = page.locator(".sidebar.open");
+  const link = await sidebar.count()
+    ? sidebar.getByRole("link", { name, exact: true })
+    : page.locator(".sidebar").getByRole("link", { name, exact: true });
+  await link.click();
 }
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/**", (route) => route.abort());
@@ -97,13 +107,12 @@ test("artist detail, collection, language and fullscreen navigation", async ({
   ).toBeVisible();
   await page.locator(".music-card").first().click();
   await expect(page.locator(".track-row")).toHaveCount(6);
-  await page.getByRole("button", { name: "PL", exact: true }).click();
-  await page
-    .locator(".player-options")
-    .getByRole("button", { name: "Full screen", exact: true })
-    .click();
+  await page.locator(".player-track .art-button").click();
   await expect(
-    page.getByRole("dialog", { name: "NOW PLAYING", exact: true }),
+    page.getByRole("dialog", { name: "TERAZ ODTWARZANE", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Zamknij", exact: true }).click();
+  await page.goto("/settings");
+  await page.getByLabel("Język").selectOption("en");
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
 });

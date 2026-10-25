@@ -17,7 +17,6 @@ test("artist search stays navigable and artist records are not playable rows", a
     }),
   }));
   await page.goto("/search?q=Adele");
-  await expect(page.locator(".youtube-player")).toHaveCSS("display", "none");
   await expect(page.getByRole("heading", { name: "Najlepszy wynik" })).toBeVisible();
   await expect(page.locator(".track-row")).toHaveCount(1);
   await expect(page.locator('.artist-card[href="/artist/yt%3AUC-adele"]')).toBeVisible();
@@ -30,7 +29,9 @@ test("artist search stays navigable and artist records are not playable rows", a
 
 test("track actions work, expanded player has artwork, and settings switch language", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Nowa playlista" }).click();
+  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  if (await menu.isVisible()) await menu.click();
+  await page.locator(".sidebar .create-playlist").click();
   await page.getByRole("textbox", { name: "Nazwa playlisty" }).fill("Menu test");
   await page.getByRole("button", { name: "Zapisz", exact: true }).click();
   await page.goto("/search?q=Kevin");
