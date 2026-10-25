@@ -1,6 +1,6 @@
 namespace Auralis.Domain;
 
-public record Playback(string Kind, string? Url = null, string? VideoId = null);
+public record Playback(string Kind, string? Url = null, string? VideoId = null, string? MediaType = null, string? Availability = null, DateTimeOffset? ExpiresAt = null);
 public record Track(string Id, string Title, string Artist, string ArtistId, string Album, string AlbumId, string Artwork, int Duration, string Genre, string Provider, Playback Playback);
 public record ArtistSummary(string Id, string Name, string Artwork);
 public record AlbumSummary(string Id, string Title, string Artist, string ArtistId, string Artwork, int Year);

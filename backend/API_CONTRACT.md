@@ -1,7 +1,7 @@
 # Backend API contract
 Base URL http://localhost:5080/api. JSON camelCase. Error JSON `{title,detail,status}`. JWT Bearer. CORS localhost:5173.
 
-Track: `{id,title,artist,artistId,album,albumId,artwork,duration,genre,provider,playback:{kind:'audio'|'youtube',url?,videoId?}}`.
+Track: `{id,title,artist,artistId,album,albumId,artwork,duration,genre,provider,playback:{kind:'audio'|'youtube',url?,videoId?,mediaType?,availability?,expiresAt?}}`. `kind:'audio'` with an HTTPS URL and `availability:'playable'` (or omitted for legacy audio records) is directly playable. YouTube records use `availability:'metadata-only'`; the Data API returns discovery metadata, not audio streams. Metadata-only records may be saved in personal collections but are excluded from the active player queue. Expiring URLs can report `expiresAt`; Auralis does not persist or synthesize a refresh URL.
 Artist: `{id,name,artwork,description,tracks:Track[],albums:Album[],related:ArtistSummary[]}`. Album `{id,title,artist,artistId,artwork,year,tracks:Track[]}`.
 GET /music/search?q=&type=all|songs|artists|albums|playlists|videos&cursor= -> `{tracks,artists,albums,playlists,nextCursor}`. Artist summary `{id,name,artwork}`. Album summary `{id,title,artist,artistId,artwork,year}`.
 GET /music/home -> `{featured:Track[],trending:Track[],newReleases:AlbumSummary[],artists:ArtistSummary[],recommendations:Track[],providerStatus:string}`.
@@ -19,4 +19,4 @@ GET /history?skip=0&take=50 -> History[] `{id,track,seconds,playedAt}`. DELETE /
 GET /statistics -> `{totalSeconds,totalEvents,topTracks:[{track,events,seconds}],topArtists:[{artist,events,seconds}],genres:[{genre,seconds}],daily:[{date,seconds}]}`.
 GET /settings -> `{language:'pl'|'en',theme:'dark'|'light'|'system',accent:string}`; PUT same.
 GET /search-history -> string[]; POST /search-history `{query}`; DELETE /search-history.
-Guest data stays frontend local storage; music endpoints anonymous. No fake catalogs: included demo is real Kevin MacLeod CC BY music, configured YouTube metadata uses official API and visible iframe playback.
+Guest data stays frontend local storage; music endpoints anonymous. No fake catalogs: included demo is real Kevin MacLeod CC BY music and is streamed from its authorized direct MP3 links. Configured YouTube metadata uses the official API; YouTube results are not playable through Auralis audio controls.

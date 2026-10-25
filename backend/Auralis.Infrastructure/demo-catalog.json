@@ -4,15 +4,17 @@
     "title": "Carefree",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/carefree.svg",
     "duration": 0,
     "genre": "Acoustic",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   },
   {
@@ -20,15 +22,17 @@
     "title": "Monkeys Spinning Monkeys",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/monkeys-spinning-monkeys.svg",
     "duration": 0,
     "genre": "Comedy",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   },
   {
@@ -36,15 +40,17 @@
     "title": "Sneaky Snitch",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/sneaky-snitch.svg",
     "duration": 0,
     "genre": "Cinematic",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   },
   {
@@ -52,15 +58,17 @@
     "title": "Cipher",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/cipher.svg",
     "duration": 0,
     "genre": "Electronic",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   },
   {
@@ -68,15 +76,17 @@
     "title": "Dream Culture",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/dream-culture.svg",
     "duration": 0,
     "genre": "Ambient",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dream%20Culture.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dream%20Culture.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   },
   {
@@ -84,15 +94,17 @@
     "title": "Wallpaper",
     "artist": "Kevin MacLeod",
     "artistId": "demo:kevin-macleod",
-    "album": "Incompetech \u2014 Creative Commons selection",
+    "album": "Incompetech — Creative Commons selection",
     "albumId": "demo:incompetech-selection",
     "artwork": "/artwork/wallpaper.svg",
     "duration": 0,
     "genre": "Electronic",
-    "provider": "Creative Commons \u00b7 CC BY 4.0",
+    "provider": "Creative Commons · CC BY 4.0",
     "playback": {
       "kind": "audio",
-      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Wallpaper.mp3"
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Wallpaper.mp3",
+      "mediaType": "audio/mpeg",
+      "availability": "playable"
     }
   }
 ]

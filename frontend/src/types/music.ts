@@ -2,6 +2,10 @@ export interface Playback {
   kind: "audio" | "youtube";
   url?: string;
   videoId?: string;
+  mediaType?: string;
+  expiresAt?: string;
+  availability?:
+    "playable" | "metadata-only" | "official-player" | "unavailable";
 }
 export interface Track {
   id: string;
@@ -25,12 +29,11 @@ export function isPlayableTrack(value: unknown): value is Track {
     typeof track.title === "string" &&
     typeof track.artist === "string" &&
     !!track.playback &&
-    (track.playback.kind === "audio"
-      ? typeof track.playback.url === "string" &&
-        track.playback.url.startsWith("https://")
-      : track.playback.kind === "youtube" &&
-        typeof track.playback.videoId === "string" &&
-        /^[\w-]{11}$/.test(track.playback.videoId))
+    track.playback.kind === "audio" &&
+    typeof track.playback.url === "string" &&
+    track.playback.url.startsWith("https://") &&
+    (track.playback.availability === undefined ||
+      track.playback.availability === "playable")
   );
 }
 export interface ArtistSummary {

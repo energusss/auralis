@@ -4,7 +4,7 @@ using Auralis.Domain;
 using Auralis.Application;
 namespace Auralis.Infrastructure;
 public class DemoMusicProvider : IMusicProvider {
- public string Status=>"Creative Commons catalog · official YouTube search available when YOUTUBE_API_KEY is configured";
+ public string Status=>"Creative Commons audio catalog · optional YouTube metadata discovery when YOUTUBE_API_KEY is configured";
  private readonly Track[] tracks;
  public DemoMusicProvider() { using var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Auralis.Infrastructure.demo-catalog.json")!; tracks=JsonSerializer.Deserialize<Track[]>(stream,new JsonSerializerOptions(JsonSerializerDefaults.Web))!; }
  private ArtistSummary ArtistSummary=>new("demo:kevin-macleod","Kevin MacLeod",tracks[0].Artwork);

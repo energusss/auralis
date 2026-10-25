@@ -29,6 +29,8 @@ public class YouTubeMusicProviderTests
 
         Assert.Single(results.Tracks);
         Assert.Equal("yt:abcdefghijk", results.Tracks[0].Id);
+        Assert.Equal("metadata-only", results.Tracks[0].Playback.Availability);
+        Assert.Null(results.Tracks[0].Playback.Url);
         Assert.Single(results.Artists);
         Assert.Equal("yt:UCchannel", results.Artists[0].Id);
         Assert.Single(results.Playlists);

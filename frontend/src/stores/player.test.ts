@@ -73,18 +73,29 @@ describe("queue transitions", () => {
       .play([
         { id: "yt:channel", name: "Artist", artwork: "" } as unknown as Track,
       ]);
-    usePlayer
-      .getState()
-      .enqueue({
-        id: "yt:channel",
-        name: "Artist",
-        artwork: "",
-      } as unknown as Track);
+    usePlayer.getState().enqueue({
+      id: "yt:channel",
+      name: "Artist",
+      artwork: "",
+    } as unknown as Track);
     expect(usePlayer.getState().queue).toBe(before);
     usePlayer
       .getState()
       .play([{ ...track("invalid"), playback: { kind: "youtube" } } as Track]);
     expect(usePlayer.getState().queue).toBe(before);
+  });
+  it("classifies YouTube metadata as non-playable and never queues it", () => {
+    const metadata = {
+      ...track("yt:abcdefghijk"),
+      playback: {
+        kind: "youtube",
+        videoId: "abcdefghijk",
+        availability: "metadata-only",
+      },
+    } as Track;
+    usePlayer.getState().play([metadata]);
+    usePlayer.getState().enqueue(metadata);
+    expect(usePlayer.getState().queue).toEqual([]);
   });
   it("previous seeks to beginning after three seconds", () => {
     usePlayer.getState().play([track("a"), track("b")], 1);
