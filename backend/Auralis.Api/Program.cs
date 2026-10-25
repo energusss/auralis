@@ -1,0 +1,32 @@
+using Auralis.Api;
+using System.Security.Claims;
+using System.Text;
+using System.Threading.RateLimiting;
+using Auralis.Application;
+using Auralis.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+var builder=WebApplication.CreateBuilder(args);
+var jwtKey=builder.Configuration["JWT_KEY"]??builder.Configuration["Jwt:Key"]??"";
+
+builder.Services.AddDbContext<AuralisDb>(o=>o.UseNpgsql(builder.Configuration["DATABASE_URL"]??builder.Configuration.GetConnectionString("Database")??"Host=localhost;Port=5432;Database=auralis;Username=auralis;Password=auralis_local_only"));
+builder.Services.AddMemoryCache(); builder.Services.AddHttpClient("youtube",c=>c.Timeout=TimeSpan.FromSeconds(15));builder.Services.AddSingleton<DemoMusicProvider>();
+builder.Services.AddScoped<IMusicProvider>(s=>string.IsNullOrWhiteSpace(builder.Configuration["YOUTUBE_API_KEY"])?s.GetRequiredService<DemoMusicProvider>():new YouTubeMusicProvider(s.GetRequiredService<IHttpClientFactory>().CreateClient("youtube"),s.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(),s.GetRequiredService<DemoMusicProvider>(),builder.Configuration["YOUTUBE_API_KEY"]!));
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="auralis",ValidAudience="auralis-web",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),ClockSkew=TimeSpan.FromSeconds(30)});
+builder.Services.AddAuthorization();builder.Services.AddCors(o=>o.AddDefaultPolicy(p=>p.WithOrigins((builder.Configuration["FRONTEND_ORIGINS"]??"http://localhost:5173,http://localhost:4173").Split(',')).AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.AddPolicy("api",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)??ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=180,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));o.AddPolicy("auth",ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new(){PermitLimit=12,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
+builder.Services.AddEndpointsApiExplorer();builder.Services.AddSwaggerGen();builder.Services.AddProblemDetails();
+builder.WebHost.ConfigureKestrel(o=>o.Limits.MaxRequestBodySize=128*1024);
+var app=builder.Build();
+jwtKey=builder.Configuration["JWT_KEY"]??builder.Configuration["Jwt:Key"]??"";
+if(jwtKey.Length<32)throw new InvalidOperationException("JWT_KEY must be a random secret of at least 32 characters. See .env.example.");
+app.UseExceptionHandler(handler=>handler.Run(async ctx=>{var error=ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;var status=error switch{MusicProviderException=>502,HttpRequestException=>502,TaskCanceledException=>504,ArgumentException=>400,DbUpdateConcurrencyException=>409,_=>500};await Results.Problem(statusCode:status,title:status==500?"An unexpected server error occurred.":error?.Message).ExecuteAsync(ctx);}));
+app.UseCors();app.UseAuthentication();app.UseAuthorization();app.UseRateLimiter();app.UseSwagger();app.UseSwaggerUI();
+app.MapGet("/health",()=>Results.Ok(new{status="ok"}));
+app.MapAuralisEndpoints();
+if(builder.Configuration["SKIP_MIGRATIONS"]!="true") {await using var scope=app.Services.CreateAsyncScope();await scope.ServiceProvider.GetRequiredService<AuralisDb>().Database.MigrateAsync();}
+app.Run();
+public partial class Program;
