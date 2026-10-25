@@ -59,11 +59,9 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await expect(handle).toHaveAttribute("aria-pressed", "true");
   await handle.press("ArrowDown");
   await expect(
-    page
-      .locator('[role="status"]')
-      .filter({
-        hasText: "was moved over droppable area demo:monkeys-spinning-monkeys",
-      }),
+    page.locator('[role="status"]').filter({
+      hasText: "was moved over droppable area demo:monkeys-spinning-monkeys",
+    }),
   ).toBeVisible();
   await handle.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
@@ -74,6 +72,12 @@ test("guest can search, like, create and reorder a persistent playlist", async (
     "Monkeys Spinning Monkeys",
   );
   await navigation(page, "Polubione");
+  await expect(
+    page
+      .locator("main")
+      .getByRole("heading", { name: "Polubione", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".track-main")).toHaveCount(1);
   await expect(page.locator(".track-main")).toContainText("Carefree");
   expect(
     await page.evaluate(
