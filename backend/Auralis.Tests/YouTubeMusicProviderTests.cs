@@ -1,5 +1,4 @@
 using System.Net;
-using System.Web;
 using Auralis.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
 using Xunit;
@@ -15,12 +14,14 @@ public sealed class YouTubeMusicProviderTests
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/videos"))
                 return """{"items":[{"id":"abcdefghijk","contentDetails":{"duration":"PT3M20S"}}]}""";
-            return """{"nextPageToken":"next","items":[
+            return """
+            {"nextPageToken":"next","items":[
               {"id":{"kind":"youtube#video","videoId":"abcdefghijk"},"snippet":{"title":"A song","channelTitle":"Adele","channelId":"UC-adele","thumbnails":{"medium":{"url":"https://img.example/song.jpg"}}}},
               {"id":{"kind":"youtube#channel","channelId":"UC-adele"},"snippet":{"title":"Adele","channelTitle":"Adele","channelId":"UC-adele"}},
               {"id":{"kind":"youtube#playlist","playlistId":"PL-adele"},"snippet":{"title":"Adele collection"}},
               {"id":{"kind":"youtube#channel","channelId":"UC-channel-only"},"snippet":{"title":"Channel that is not a song"}}
-            ]}""";
+            ]}
+            """;
         });
         using var client = new HttpClient(handler);
         using var cache = new MemoryCache(new MemoryCacheOptions());
