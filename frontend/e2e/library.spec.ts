@@ -55,8 +55,15 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await page.getByRole("button", { name: "Browser test", exact: true }).click();
   await navigation(page, "Browser test");
   const handle = page.getByLabel("Reorder", { exact: true }).first();
-  await handle.focus();
-  await page.keyboard.press("ArrowDown");
+  await handle.press("Space");
+  await expect(handle).toHaveAttribute("aria-pressed", "true");
+  await handle.press("ArrowDown");
+  await expect(
+    page.locator('[role="status"]').filter({
+      hasText: "was moved over droppable area demo:monkeys-spinning-monkeys",
+    }),
+  ).toBeVisible();
+  await handle.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
     "Monkeys Spinning Monkeys",
   );
@@ -82,25 +89,6 @@ test("artist detail, collection, language and fullscreen navigation", async ({
   page,
 }) => {
   await page.goto("/search?q=Kevin");
-  await expect(page.locator(".track-row")).toHaveCount(6);
-  await expect(page.locator(".artist-card")).toContainText("Kevin MacLeod");
-  await page.locator(".track-artist").first().click();
-  await expect(page).toHaveURL(/\/artist\/demo%3Akevin-macleod/);
-  await expect(
-    page.getByRole("heading", { name: "Kevin MacLeod", exact: true }),
-  ).toBeVisible();
-  await page.goto("/search?q=Kevin");
-  await expect(
-    page.getByRole("button", { name: "Playlisty", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "PL", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Playlists", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "EN", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "PL", exact: true }),
-  ).toBeVisible();
   await page
     .getByRole("link", { name: "Kevin MacLeod Kevin MacLeod", exact: true })
     .click();

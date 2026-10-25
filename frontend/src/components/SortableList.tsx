@@ -15,28 +15,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-function Item({
-  id,
-  index,
-  count,
-  onMove,
-  children,
-}: {
-  id: string;
-  index: number;
-  count: number;
-  onMove: (from: number, to: number) => void;
-  children: ReactNode;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-  const sortableKeyDown = listeners?.onKeyDown;
+function Item({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
   return (
     <div
       ref={setNodeRef}
@@ -46,20 +27,8 @@ function Item({
       <button
         className="drag-handle"
         aria-label="Reorder"
-        aria-keyshortcuts="ArrowUp ArrowDown"
         {...attributes}
         {...listeners}
-        onKeyDown={(event) => {
-          if (!isDragging && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
-            const next = index + (event.key === "ArrowDown" ? 1 : -1);
-            if (next >= 0 && next < count) {
-              event.preventDefault();
-              onMove(index, next);
-              return;
-            }
-          }
-          sortableKeyDown?.(event);
-        }}
       >
         <GripVertical size={16} />
       </button>
@@ -93,7 +62,7 @@ export function SortableList({
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         {ids.map((id, index) => (
-          <Item id={id} index={index} count={ids.length} onMove={onMove} key={id}>
+          <Item id={id} key={id}>
             {children(id, index)}
           </Item>
         ))}

@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { moveItem, nextQueueIndex, usePlayer } from "./player";
 import type { Track } from "../types/music";
-import { resetYouTubeRuntimeForTests } from "../services/youtubeRuntime";
 const track = (id: string): Track => ({
   id,
   title: id,
@@ -16,8 +15,7 @@ const track = (id: string): Track => ({
   provider: "test",
   playback: { kind: "audio", url: "https://example.com/test.mp3" },
 });
-beforeEach(() => {
-  resetYouTubeRuntimeForTests();
+beforeEach(() =>
   usePlayer.setState({
     queue: [],
     index: 0,
@@ -26,8 +24,8 @@ beforeEach(() => {
     repeat: "none",
     shuffle: false,
     loadId: 0,
-  });
-});
+  }),
+);
 describe("queue transitions", () => {
   it("stops at end unless repeat-all is enabled", () => {
     expect(nextQueueIndex(2, 3, false, "none")).toBe(-1);
@@ -67,65 +65,6 @@ describe("queue transitions", () => {
   it("ignores invalid reorder indexes", () => {
     const a = [1, 2];
     expect(moveItem(a, -1, 1)).toBe(a);
-  });
-  it("rejects artist/channel results and tracks without an authorized source", () => {
-    const before = usePlayer.getState().queue;
-    usePlayer
-      .getState()
-      .play([
-        { id: "yt:channel", name: "Artist", artwork: "" } as unknown as Track,
-      ]);
-    usePlayer.getState().enqueue({
-      id: "yt:channel",
-      name: "Artist",
-      artwork: "",
-    } as unknown as Track);
-    expect(usePlayer.getState().queue).toBe(before);
-    usePlayer
-      .getState()
-      .play([{ ...track("invalid"), playback: { kind: "youtube" } } as Track]);
-    expect(usePlayer.getState().queue).toBe(before);
-  });
-  it("classifies YouTube metadata as non-playable and never queues it", () => {
-    const metadata = {
-      ...track("yt:abcdefghijk"),
-      playback: {
-        kind: "youtube",
-        videoId: "abcdefghijk",
-        availability: "metadata-only",
-      },
-    } as Track;
-    usePlayer.getState().play([metadata]);
-    usePlayer.getState().enqueue(metadata);
-    expect(usePlayer.getState().queue).toEqual([]);
-  });
-  it("accepts official YouTube embeds in mixed-provider queues", () => {
-    const youtube = {
-      ...track("yt:dQw4w9WgXcQ"),
-      provider: "YouTube",
-      playback: {
-        kind: "youtube",
-        videoId: "dQw4w9WgXcQ",
-        availability: "official-player",
-      },
-    } as Track;
-    const archive = {
-      ...track("ia:archive-track"),
-      provider: "Internet Archive",
-    };
-    usePlayer.getState().play([youtube, archive]);
-    expect(usePlayer.getState().queue.map((item) => item.id)).toEqual([
-      youtube.id,
-      archive.id,
-    ]);
-    usePlayer.getState().next();
-    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
-      archive.id,
-    );
-    usePlayer.getState().previous();
-    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
-      youtube.id,
-    );
   });
   it("previous seeks to beginning after three seconds", () => {
     usePlayer.getState().play([track("a"), track("b")], 1);

@@ -3,71 +3,32 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaybackEngine } from "./PlaybackEngine";
 import { usePlayer } from "../stores/player";
-import { resetAudioRuntimeForTests } from "../services/audioRuntime";
-import {
-  resetYouTubeRuntimeForTests,
-  type YouTubeApi,
-  type YouTubePlayer,
-} from "../services/youtubeRuntime";
 import type { Track } from "../types/music";
-
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-
 class FakeAudio {
   static instances: FakeAudio[] = [];
   currentTime = 0;
   duration = 100;
   volume = 1;
-  muted = false;
-  paused = true;
   preload = "";
   src = "";
-  private listeners = new Map<
-    string,
-    Set<EventListenerOrEventListenerObject>
-  >();
-  play = vi.fn(() => {
-    this.paused = false;
-    return Promise.resolve();
-  });
+  onplaying: (() => void) | null = null;
+  onpause: (() => void) | null = null;
+  onwaiting: (() => void) | null = null;
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  play = vi.fn(() => Promise.resolve());
   pause = vi.fn(() => {
-    if (!this.paused) {
-      this.paused = true;
-      this.emit("pause");
-    }
+    this.onpause?.();
   });
-  load = vi.fn(() => {
-    this.currentTime = 0;
-    this.paused = true;
-  });
-  removeAttribute = vi.fn((name: string) => {
-    if (name === "src") this.src = "";
-  });
-  addEventListener(name: string, listener: EventListenerOrEventListenerObject) {
-    const listeners =
-      this.listeners.get(name) ?? new Set<EventListenerOrEventListenerObject>();
-    listeners.add(listener);
-    this.listeners.set(name, listeners);
-  }
-  removeEventListener(
-    name: string,
-    listener: EventListenerOrEventListenerObject,
-  ) {
-    this.listeners.get(name)?.delete(listener);
-  }
-  emit(name: string) {
-    for (const listener of this.listeners.get(name) ?? [])
-      typeof listener === "function"
-        ? listener(new Event(name))
-        : listener.handleEvent(new Event(name));
-  }
+  load = vi.fn();
+  removeAttribute = vi.fn();
   constructor() {
     FakeAudio.instances.push(this);
   }
 }
-
 const track = (id: string): Track => ({
   id,
   title: id,
@@ -79,17 +40,10 @@ const track = (id: string): Track => ({
   duration: 100,
   genre: "Ambient",
   provider: "test",
-  playback: {
-    kind: "audio",
-    url: `https://example.com/${id}.mp3`,
-    availability: "playable",
-  },
+  playback: { kind: "audio", url: `https://example.com/${id}.mp3` },
 });
-
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] });
-  resetAudioRuntimeForTests();
-  resetYouTubeRuntimeForTests();
   FakeAudio.instances = [];
   vi.stubGlobal("Audio", FakeAudio);
   usePlayer.setState({
@@ -108,36 +62,27 @@ beforeEach(() => {
     error: null,
   });
 });
-
 afterEach(() => {
   cleanup();
-  resetAudioRuntimeForTests();
-  resetYouTubeRuntimeForTests();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-
-function start(
-  onListen?: (track: Track, seconds: number, eventId: string) => void,
-) {
+function start() {
   act(() => usePlayer.getState().play([track("a"), track("b")]));
-  const rendered = render(<PlaybackEngine onListen={onListen} />);
+  const rendered = render(<PlaybackEngine />);
   const audio = FakeAudio.instances[0];
-  act(() => audio.emit("playing"));
+  act(() => audio.onplaying?.());
   return { ...rendered, audio };
 }
-
-describe("persistent authorized audio engine", () => {
-  it("uses one audio element across track changes and unrelated rerenders", () => {
+describe("authorized audio adapter lifecycle", () => {
+  it("loads once and survives unrelated rerenders and queue reordering", () => {
     const { audio, rerender } = start();
     expect(audio.play).toHaveBeenCalledTimes(1);
     rerender(<PlaybackEngine />);
-    act(() => usePlayer.getState().next());
+    act(() => usePlayer.getState().reorder(0, 1));
     expect(FakeAudio.instances).toHaveLength(1);
-    expect(audio.src).toContain("/b.mp3");
-    expect(audio.play).toHaveBeenCalledTimes(2);
+    expect(audio.pause).not.toHaveBeenCalled();
   });
-
   it("pauses, resumes, seeks and changes volume through global controls", () => {
     const { audio } = start();
     act(() => usePlayer.getState().toggle());
@@ -151,104 +96,7 @@ describe("persistent authorized audio engine", () => {
     act(() => usePlayer.getState().toggleMute());
     expect(audio.volume).toBe(0);
   });
-
-  it("rejects metadata-only YouTube tracks without creating another audio source", () => {
-    const { audio } = start();
-    const youtubeTrack: Track = {
-      ...track("yt:abcdefghijk"),
-      playback: {
-        kind: "youtube",
-        videoId: "abcdefghijk",
-        availability: "metadata-only",
-      },
-    };
-    const before = audio.play.mock.calls.length;
-    act(() => usePlayer.getState().play([youtubeTrack]));
-    expect(FakeAudio.instances).toHaveLength(1);
-    expect(audio.play).toHaveBeenCalledTimes(before);
-    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe("a");
-  });
-
-  it("uses one visible official YouTube player and switches cleanly to Archive audio", async () => {
-    let playerOptions: { events: { onReady: () => void } } | null = null;
-    let playerCreateCount = 0;
-    const youtubePlayer: YouTubePlayer = {
-      playVideo: vi.fn(),
-      pauseVideo: vi.fn(),
-      loadVideoById: vi.fn(),
-      cueVideoById: vi.fn(),
-      seekTo: vi.fn(),
-      setVolume: vi.fn(),
-      mute: vi.fn(),
-      unMute: vi.fn(),
-      getCurrentTime: () => 8,
-      getDuration: () => 181,
-      getPlayerState: () => 1,
-      destroy: vi.fn(),
-    };
-    class FakeYouTubePlayer {
-      constructor(
-        _element: HTMLElement,
-        options: { events: { onReady: () => void } },
-      ) {
-        playerCreateCount++;
-        playerOptions = options;
-        queueMicrotask(() => options.events.onReady());
-        return youtubePlayer as unknown as FakeYouTubePlayer;
-      }
-    }
-    window.YT = {
-      Player: FakeYouTubePlayer as unknown as YouTubeApi["Player"],
-    };
-    const rendered = render(<PlaybackEngine />);
-    await act(async () => {
-      usePlayer.getState().play([track("archive")]);
-      await Promise.resolve();
-    });
-    const audio = FakeAudio.instances[0];
-    expect(audio.paused).toBe(false);
-    const youtubeTrack: Track = {
-      ...track("yt:dQw4w9WgXcQ"),
-      provider: "YouTube",
-      playback: {
-        kind: "youtube",
-        videoId: "dQw4w9WgXcQ",
-        availability: "official-player",
-      },
-    };
-    await act(async () => {
-      usePlayer.getState().play([youtubeTrack, track("archive")], 0);
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(
-      rendered.container.querySelector(".youtube-player.is-active"),
-    ).toBeTruthy();
-    expect(audio.paused).toBe(true);
-    expect(playerCreateCount).toBe(1);
-    expect(youtubePlayer.loadVideoById).toHaveBeenCalledWith("dQw4w9WgXcQ");
-    expect(usePlayer.getState().status).not.toBe("error");
-
-    act(() => usePlayer.getState().toggle());
-    expect(youtubePlayer.pauseVideo).toHaveBeenCalled();
-    act(() => usePlayer.getState().toggle());
-    expect(youtubePlayer.playVideo).toHaveBeenCalled();
-    act(() => usePlayer.getState().seek(32));
-    expect(youtubePlayer.seekTo).toHaveBeenCalledWith(32, true);
-    act(() => usePlayer.getState().setVolume(0.2));
-    expect(youtubePlayer.setVolume).toHaveBeenCalledWith(20);
-
-    act(() => usePlayer.getState().next());
-    expect(youtubePlayer.pauseVideo).toHaveBeenCalled();
-    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe(
-      "archive",
-    );
-    expect(FakeAudio.instances).toHaveLength(1);
-    expect(audio.play).toHaveBeenCalledTimes(2);
-    expect(playerOptions).not.toBeNull();
-  });
-
-  it("clears the source and stops audio when the queue is cleared", () => {
+  it("stops and releases media when the queue is cleared", () => {
     const { audio } = start();
     act(() => usePlayer.getState().clear());
     expect(audio.pause).toHaveBeenCalled();
@@ -256,26 +104,64 @@ describe("persistent authorized audio engine", () => {
     expect(audio.load).toHaveBeenCalled();
     expect(usePlayer.getState().status).toBe("idle");
   });
-
-  it("automatically advances on ended and honors repeat-one", () => {
+  it("moves to the next source on ended without stale events changing state", () => {
     const { audio } = start();
-    act(() => audio.emit("ended"));
-    expect(FakeAudio.instances).toHaveLength(1);
+    act(() => audio.onended?.());
+    expect(FakeAudio.instances).toHaveLength(2);
     expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe("b");
-    act(() => usePlayer.getState().cycleRepeat());
-    act(() => usePlayer.getState().cycleRepeat());
-    act(() => audio.emit("ended"));
-    expect(usePlayer.getState().queue[usePlayer.getState().index].id).toBe("b");
+    act(() => audio.onerror?.());
+    expect(usePlayer.getState().error).toBeNull();
   });
-
-  it("counts only actual audible playback for history", () => {
+  it("retains an error through pause and recreates source on retry", () => {
+    const { audio } = start();
+    act(() => audio.onerror?.());
+    expect(usePlayer.getState().status).toBe("error");
+    expect(usePlayer.getState().error).toBe("playbackError");
+    act(() => usePlayer.getState().toggle());
+    expect(FakeAudio.instances).toHaveLength(2);
+    expect(usePlayer.getState().error).toBeNull();
+  });
+  it("does not let a rejected stale resume promise stop the new track", async () => {
+    const { audio } = start();
+    let reject!: (error: Error) => void;
+    audio.play.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, r) => {
+          reject = r;
+        }),
+    );
+    act(() => usePlayer.getState().toggle());
+    act(() => usePlayer.getState().toggle());
+    act(() => usePlayer.getState().next());
+    await act(async () => reject(new Error("aborted old media")));
+    expect(usePlayer.getState().error).toBeNull();
+    expect(usePlayer.getState().playing).toBe(true);
+  });
+  it("counts actual advancing audible time, excluding buffering, muted audio and seeks", () => {
     const listened = vi.fn();
-    const { audio } = start(listened);
-    for (let i = 0; i < 16; i++)
-      act(() => {
-        audio.currentTime += 0.25;
-        vi.advanceTimersByTime(250);
-      });
+    act(() => usePlayer.getState().play([track("a")]));
+    render(<PlaybackEngine onListen={listened} />);
+    const audio = FakeAudio.instances[0];
+    act(() => audio.onplaying?.());
+    const ticks = (n: number) => {
+      for (let i = 0; i < n; i++)
+        act(() => {
+          audio.currentTime += 0.25;
+          vi.advanceTimersByTime(250);
+        });
+    };
+    ticks(8);
+    act(() => audio.onwaiting?.());
+    ticks(8);
+    act(() => audio.onplaying?.());
+    act(() => usePlayer.getState().toggleMute());
+    ticks(8);
+    act(() => usePlayer.getState().toggleMute());
+    act(() => {
+      audio.currentTime = 70;
+      vi.advanceTimersByTime(250);
+    });
+    ticks(8);
     act(() => usePlayer.getState().clear());
     expect(listened).toHaveBeenCalledOnce();
     expect(listened.mock.calls[0][1]).toBe(4);

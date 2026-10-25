@@ -72,6 +72,6 @@ export function GoogleLoginButton({
   return clientId ? (
     <div ref={target} className="google-login" aria-label={label} />
   ) : (
-    <p className="muted">{label} · VITE_GOOGLE_CLIENT_ID</p>
+    <button type="button" className="google-login-fallback" disabled>{label}</button>
   );
 }

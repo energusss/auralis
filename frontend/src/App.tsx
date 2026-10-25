@@ -71,7 +71,6 @@ import {
   time,
 } from "./components/ui";
 import { SortableList } from "./components/SortableList";
-import { isPlayableTrack, isResolvableTrack } from "./types/music";
 import type {
   Track,
   Playlist,
@@ -113,40 +112,12 @@ function TrackRow({
   const { t } = useTranslation();
   const player = usePlayer();
   const { lib, like, choosePlaylist, notify } = useApp();
-  const [resolving, setResolving] = useState(false);
   const active = player.queue[player.index]?.id === track.id;
-  const playable = isPlayableTrack(track);
-  const resolvable = isResolvableTrack(track);
-  const canPlay = playable || resolvable;
-  const resolveTracks = async (selection: Track[], selectedIndex: number) => {
-    if (!canPlay) {
-      notify(t("trackUnavailable"));
-      return null;
-    }
-    setResolving(true);
-    try {
-      return await service.preparePlaybackQueue(selection, selectedIndex);
-    } catch {
-      notify(t("openAudioFailed"));
-      return null;
-    } finally {
-      setResolving(false);
-    }
-  };
   return (
     <div className={`track-row ${active ? "selected" : ""}`}>
       <button
         className="track-main"
-        onClick={
-          onPlay ||
-          (() => {
-            if (!canPlay) return notify(t("trackUnavailable"));
-            void resolveTracks(tracks, index).then((items) => {
-              if (items) player.play(items, index);
-            });
-          })
-        }
-        disabled={resolving}
+        onClick={onPlay || (() => player.play(tracks, index))}
       >
         <span className="track-number">
           {active && player.playing ? (
@@ -162,19 +133,9 @@ function TrackRow({
         <Artwork src={track.artwork} title={track.title} />
         <span>
           <strong>{track.title}</strong>
-          {!playable && (
-            <small className="track-availability">
-              {resolvable ? t("openAudioReady") : t("metadataOnly")}
-            </small>
-          )}
+          <small>{track.artist}</small>
         </span>
       </button>
-      <Link
-        className="track-artist"
-        to={"/artist/" + encodeURIComponent(track.artistId)}
-      >
-        {track.artist}
-      </Link>
       <Link
         className="track-album"
         to={
@@ -188,18 +149,6 @@ function TrackRow({
       <span className="track-time">
         {track.duration ? time(track.duration) : "—"}
       </span>
-      {resolvable && track.playback.sourcePage && (
-        <a
-          className="track-source"
-          href={track.playback.sourcePage}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={track.playback.licenseUrl}
-          aria-label={t("openAudioSource")}
-        >
-          {t("license")}
-        </a>
-      )}
       <IconButton
         label={t("favorites")}
         active={lib.favorites.some((x) => x.id === track.id)}
@@ -215,19 +164,9 @@ function TrackRow({
       </IconButton>
       <IconButton
         label={t("addQueue")}
-        disabled={!canPlay || resolving}
         onClick={() => {
-          if (playable) {
-            player.enqueue(track);
-            notify(t("added"));
-          } else {
-            void resolveTracks([track], 0).then((items) => {
-              if (items) {
-                player.enqueue(items[0]);
-                notify(t("added"));
-              }
-            });
-          }
+          player.enqueue(track);
+          notify(t("added"));
         }}
       >
         <ListMusic size={17} />
@@ -274,9 +213,7 @@ function MusicCards({ tracks }: { tracks: Track[] }) {
             <Artwork src={track.artwork} title={track.title} />
             <button
               aria-label={`${t("play")} ${track.title}`}
-              title={isPlayableTrack(track) ? t("play") : t("trackUnavailable")}
               className="card-play"
-              disabled={!isPlayableTrack(track)}
               onClick={() => player.play(tracks, i)}
             >
               <Play size={23} fill="currentColor" />
@@ -310,9 +247,6 @@ function MusicCards({ tracks }: { tracks: Track[] }) {
               {track.artist} <span>· {track.genre}</span>
             </p>
           </Link>
-          {!isPlayableTrack(track) && (
-            <small className="track-availability">{t("metadataOnly")}</small>
-          )}
         </motion.article>
       ))}
     </div>
@@ -428,7 +362,6 @@ function HomePage({ discover = false }: { discover?: boolean }) {
           <div className="hero-actions">
             <button
               className="primary"
-              disabled={!data.featured.some(isPlayableTrack)}
               onClick={() => player.play(data.featured)}
             >
               <Play size={17} fill="currentColor" />
@@ -462,12 +395,10 @@ function HomePage({ discover = false }: { discover?: boolean }) {
               <i />
             </span>
             <div>
-              {data.featured[0]?.provider === "YouTube"
-                ? t("metadataOnly")
-                : t("demo")}
+              {data.featured[0]?.provider === "YouTube" ? "YouTube" : t("demo")}
               <small>
                 {data.featured[0]?.provider === "YouTube"
-                  ? t("trackUnavailable")
+                  ? "Official player"
                   : "Kevin MacLeod · Incompetech"}
               </small>
             </div>
@@ -482,18 +413,12 @@ function HomePage({ discover = false }: { discover?: boolean }) {
               <button
                 key={track.id}
                 className="quick-track glass"
-                disabled={!isPlayableTrack(track)}
                 onClick={() => player.play(recent, recent.indexOf(track))}
               >
                 <Artwork src={track.artwork} title={track.title} />
                 <span>
                   <strong>{track.title}</strong>
                   <small>{track.artist}</small>
-                  {!isPlayableTrack(track) && (
-                    <small className="track-availability">
-                      {t("metadataOnly")}
-                    </small>
-                  )}
                 </span>
                 <Play size={18} />
               </button>
@@ -649,29 +574,18 @@ function SearchPage() {
         )}
       </div>
       <div className="chips filters">
-        {[
-          ["all", "all"],
-          ["songs", "songs"],
-          ["artists", "artists"],
-          ["albums", "albums"],
-          ["playlists", "playlists"],
-          ["videos", "videos"],
-          ["open-audio", "openAudio"],
-        ].map(
-          ([key, label]) => (
+        {["all", "songs", "artists", "albums", "playlists", "videos"].map(
+          (key) => (
             <button
               className={`chip ${type === key ? "chosen" : ""}`}
               key={key}
               onClick={() => setType(key)}
             >
-              {t(label)}
+              {t(key)}
             </button>
           ),
         )}
       </div>
-      {type === "open-audio" && (
-        <p className="track-availability">{t("openAudioNotice")}</p>
-      )}
       {recent.length > 0 && !term && (
         <Section title={t("searchRecent")}>
           <div className="chips">
@@ -903,17 +817,6 @@ function DetailsPage({
     );
   const title = "name" in data ? data.name : data.title;
   const tracks = data.tracks;
-  const playIndices = tracks
-    .map((track, index) => ({ track, index }))
-    .filter(({ track }) => isPlayableTrack(track) || isResolvableTrack(track))
-    .map(({ index }) => index);
-  const playTracks = async (index: number) => {
-    try {
-      player.play(await service.preparePlaybackQueue(tracks, index), index);
-    } catch {
-      notify(t("openAudioFailed"));
-    }
-  };
   const isSaved =
     kind === "artist"
       ? lib.savedArtists.some((a) => a.id === id)
@@ -960,9 +863,9 @@ function DetailsPage({
           </small>
           <div className="hero-actions">
             <button
-              disabled={!playIndices.length}
+              disabled={!tracks.length}
               className="primary"
-              onClick={() => void playTracks(playIndices[0] ?? 0)}
+              onClick={() => player.play(tracks)}
             >
               <Play size={18} fill="currentColor" />
               {t("play")}
@@ -971,11 +874,9 @@ function DetailsPage({
               label={t("shuffle")}
               onClick={() => {
                 if (!player.shuffle) player.toggleShuffle();
-                void playTracks(
-                  playIndices[Math.floor(Math.random() * playIndices.length)] ?? 0,
-                );
+                player.play(tracks, Math.floor(Math.random() * tracks.length));
               }}
-              disabled={!playIndices.length}
+              disabled={!tracks.length}
             >
               <Shuffle />
             </IconButton>
@@ -1435,13 +1336,7 @@ function PlayerBar({
         </button>
         <div>
           <strong>{track?.title || t("welcome")}</strong>
-          {track ? (
-            <Link to={"/artist/" + encodeURIComponent(track.artistId)}>
-              <small>{track.artist}</small>
-            </Link>
-          ) : (
-            <small>{t("subtitle")}</small>
-          )}
+          <small>{track?.artist || t("subtitle")}</small>
         </div>
         {track && (
           <IconButton
@@ -1569,36 +1464,25 @@ function Fullscreen({ close }: { close: () => void }) {
         <div className="fullscreen-main">
           <Artwork src={track?.artwork} title={track?.title || "Auralis"} />
           <h1>{track?.title || t("emptyQueue")}</h1>
-          {track && (
-            <Link
-              className="fullscreen-artist"
-              to={"/artist/" + encodeURIComponent(track.artistId)}
-            >
-              {track.artist}
-            </Link>
-          )}
-          {track && !isPlayableTrack(track) && (
-            <p className="track-availability">{t("metadataOnly")}</p>
-          )}
+          <p>{track?.artist}</p>
           <Progress />
           <Controls large />
         </div>
         <aside>
           <h3>{t("queue")}</h3>
           {p.queue.slice(p.index + 1, p.index + 5).map((x, i) => (
-            <div className="quick-track" key={x.id + i}>
-              <button
-                className="quick-track-main"
-                onClick={() => p.play(p.queue, p.index + 1 + i)}
-              >
-                <Artwork src={x.artwork} title={x.title} />
+            <button
+              className="quick-track"
+              key={x.id + i}
+              onClick={() => p.play(p.queue, p.index + 1 + i)}
+            >
+              <Artwork src={x.artwork} title={x.title} />
+              <span>
                 <strong>{x.title}</strong>
-                <Play size={16} />
-              </button>
-              <Link to={"/artist/" + encodeURIComponent(x.artistId)}>
                 <small>{x.artist}</small>
-              </Link>
-            </div>
+              </span>
+              <Play size={16} />
+            </button>
           ))}
           <div className="lyrics-panel glass">
             <h3>{t("lyrics")}</h3>
@@ -1658,7 +1542,6 @@ export default function App() {
   };
   const notify = (s: string) => setToast(s);
   const track = usePlayer((s) => s.queue[s.index]);
-  const closeFullscreen = () => setFull(false);
   useEffect(() => {
     const listener = () => {
       setSession(service.getSession());
@@ -1994,7 +1877,7 @@ export default function App() {
       />
       <AnimatePresence>
         {queue && <Queue close={() => setQueue(false)} />}{" "}
-        {full && <Fullscreen close={closeFullscreen} />}
+        {full && <Fullscreen close={() => setFull(false)} />}
       </AnimatePresence>
       <AnimatePresence>
         {toast && (

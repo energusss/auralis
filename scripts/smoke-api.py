@@ -16,7 +16,7 @@ def request(path, method="GET", body=None, token=None, expected=200):
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
     try:
-        response = urllib.request.urlopen(req, timeout=60)
+        response = urllib.request.urlopen(req, timeout=20)
     except urllib.error.HTTPError as error:
         assert error.code == expected, f"{method} {path}: expected {expected}, got {error.code}"
         return None
@@ -52,19 +52,3 @@ lib = request("/library", token=renewed["accessToken"])
 assert len(lib["favorites"]) == 1 and len(lib["playlists"]) == 1 and len(lib["history"]) == 1
 assert request("/settings", token=renewed["accessToken"])["language"] == "en"
 print("PostgreSQL migrations and HTTP journey passed: accounts, ownership, favorites, playlists, order, history, settings and logout/login persistence.")
-
-# This is an external-source integration check, not a mock: search the real
-# Archive catalog, resolve its declared CC source, then request MP3 byte ranges.
-open_audio = request("/music/open-audio/search?q=Directionless%20EP")
-night_owl = next((track for track in open_audio["tracks"] if "Night Owl" in track["title"]), None)
-assert night_owl and night_owl["provider"] == "Internet Archive", "Expected the real Directionless EP catalog item"
-assert night_owl["playback"]["availability"] == "resolvable" and not night_owl["playback"].get("url")
-resolved = request("/music/playback/resolve", "POST", {"trackIds": [night_owl["id"]]})[0]
-assert resolved["availability"] == "playable" and resolved["mediaType"] == "audio/mpeg"
-assert "creativecommons.org/licenses/by/3.0" in resolved["licenseUrl"]
-stream_request = urllib.request.Request(resolved["url"], headers={"Range": "bytes=0-4095"})
-with urllib.request.urlopen(stream_request, timeout=60) as stream:
-    sample = stream.read(4096)
-    assert stream.status == 206, f"Expected byte-range MP3 response, got {stream.status}"
-    assert sample.startswith(b"ID3") or (len(sample) > 1 and sample[0] == 0xFF and sample[1] & 0xE0 == 0xE0), "Resolved source did not return MP3 frames"
-print("Live provider integration passed: genuine Night Owl metadata, declared CC BY source, MP3 range bytes fetched.")

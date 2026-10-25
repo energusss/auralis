@@ -37,12 +37,3 @@ After the user signed in, `energusss/auralis` was created as a private repositor
 GitHub Actions subsequently verified the standard backend build and tests and a PostgreSQL 16 HTTP persistence journey. Initial Playwright CI exposed a responsive test-selector mismatch and a real route-transition remount that cleared search input; both were repaired without redesigning the UI. Current results are in `docs/VERIFICATION.md`.
 
 Final published-code CI passed: frontend production build and 15 automated tests, 4 desktop/mobile Playwright journeys, backend build and 12 tests, plus PostgreSQL 16 migrations and HTTP persistence verification. Run: https://github.com/energusss/auralis/actions/runs/40219895569.
-
-## AURALIS v1.1 incremental update
-
-- Corrected YouTube “All” search into separately typed video, channel and playlist results; preserved cursors for each category and blocked unplayable records at the player store boundary.
-- Added artist profile links to track rows, the global player and expanded queue while keeping those links outside playback click targets.
-- Moved the authorized YouTube iframe into expanded Now Playing. Starting a YouTube track opens that view; closing or pressing Escape pauses it. Native artwork remains for audio tracks and unavailable video is reported honestly.
-- Added Google Identity Services sign-in. ASP.NET validates Google's OIDC signing keys and token claims; `sub` is stored with a unique database index. Matching existing accounts are linked only for Google-verified emails. The local email/password flow remains available.
-- Added localized playlist search labels, AURALIS SVG favicon and Google OAuth configuration instructions.
-- Local verification: frontend build and 18 tests passed; backend build and 14 tests passed. Local Playwright could not use the missing browser binary, but GitHub Actions installed Chromium and passed the desktop/mobile journeys. Full published-code CI, including PostgreSQL migration and API persistence, passed in run [40227102638](https://github.com/energusss/auralis/actions/runs/40227102638). No Google OAuth ID or live YouTube key was provided, so those external-provider roundtrips remain unverified.

@@ -53,14 +53,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install live playback browser test dependencies
-        working-directory: frontend
-        run: npm ci && npx playwright install --with-deps chromium
       - run: dotnet restore backend/Auralis.Tests
       - run: dotnet build backend/Auralis.Api --configuration Release --no-restore
       - run: dotnet test backend/Auralis.Tests --configuration Release --logger 'trx;LogFileName=backend.trx'
@@ -80,8 +72,6 @@ jobs:
           done
           if [ "$ready" != true ]; then cat /tmp/auralis-api.log; exit 1; fi
           python3 scripts/smoke-api.py
-          cd frontend
-          AURALIS_LIVE_PROVIDER_E2E=true npm run test:e2e -- --grep @live
       - uses: actions/upload-artifact@v4
         if: always()
         with:
