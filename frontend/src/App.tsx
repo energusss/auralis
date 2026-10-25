@@ -61,6 +61,7 @@ import {
 import * as service from "./services/api";
 import { usePlayer } from "./stores/player";
 import { PlaybackEngine } from "./components/PlaybackEngine";
+import { GoogleLoginButton } from "./components/GoogleLoginButton";
 import {
   Artwork,
   IconButton,
@@ -132,9 +133,14 @@ function TrackRow({
         <Artwork src={track.artwork} title={track.title} />
         <span>
           <strong>{track.title}</strong>
-          <small>{track.artist}</small>
         </span>
       </button>
+      <Link
+        className="track-artist"
+        to={"/artist/" + encodeURIComponent(track.artistId)}
+      >
+        {track.artist}
+      </Link>
       <Link
         className="track-album"
         to={
@@ -1335,7 +1341,13 @@ function PlayerBar({
         </button>
         <div>
           <strong>{track?.title || t("welcome")}</strong>
-          <small>{track?.artist || t("subtitle")}</small>
+          {track ? (
+            <Link to={"/artist/" + encodeURIComponent(track.artistId)}>
+              <small>{track.artist}</small>
+            </Link>
+          ) : (
+            <small>{t("subtitle")}</small>
+          )}
         </div>
         {track && (
           <IconButton
@@ -1461,27 +1473,53 @@ function Fullscreen({ close }: { close: () => void }) {
       </header>
       <div className="fullscreen-content">
         <div className="fullscreen-main">
-          <Artwork src={track?.artwork} title={track?.title || "Auralis"} />
+          {track?.playback.kind === "youtube" && track.playback.videoId ? (
+            <div
+              id="auralis-youtube-host"
+              className="fullscreen-video glass"
+              aria-label="YouTube video"
+            >
+              {p.error && (
+                <div className="video-fallback">
+                  <Artwork src={track.artwork} title={track.title} />
+                  <span>{t("videoUnavailable")}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Artwork src={track?.artwork} title={track?.title || "Auralis"} />
+          )}
           <h1>{track?.title || t("emptyQueue")}</h1>
-          <p>{track?.artist}</p>
+          {track && (
+            <Link
+              className="fullscreen-artist"
+              to={"/artist/" + encodeURIComponent(track.artistId)}
+            >
+              {track.artist}
+            </Link>
+          )}
+          {p.error && track?.playback.kind === "youtube" && (
+            <p>{t("videoUnavailable")}</p>
+          )}
           <Progress />
           <Controls large />
         </div>
         <aside>
           <h3>{t("queue")}</h3>
           {p.queue.slice(p.index + 1, p.index + 5).map((x, i) => (
-            <button
-              className="quick-track"
-              key={x.id + i}
-              onClick={() => p.play(p.queue, p.index + 1 + i)}
-            >
-              <Artwork src={x.artwork} title={x.title} />
-              <span>
+            <div className="quick-track" key={x.id + i}>
+              <button
+                className="quick-track-main"
+                onClick={() => p.play(p.queue, p.index + 1 + i)}
+              >
+                <Artwork src={x.artwork} title={x.title} />
                 <strong>{x.title}</strong>
+                <Play size={16} />
+              </button>
+              <Link to={"/artist/" + encodeURIComponent(x.artistId)}>
                 <small>{x.artist}</small>
-              </span>
-              <Play size={16} />
-            </button>
+              </Link>
+            </div>
           ))}
           <div className="lyrics-panel glass">
             <h3>{t("lyrics")}</h3>
@@ -1541,6 +1579,15 @@ export default function App() {
   };
   const notify = (s: string) => setToast(s);
   const track = usePlayer((s) => s.queue[s.index]);
+  const isPlaying = usePlayer((s) => s.playing);
+  useEffect(() => {
+    if (isPlaying && track?.playback.kind === "youtube" && !full) setFull(true);
+  }, [isPlaying, track?.id, full]);
+  const closeFullscreen = () => {
+    if (track?.playback.kind === "youtube")
+      usePlayer.setState({ playing: false, status: "paused" });
+    setFull(false);
+  };
   useEffect(() => {
     const listener = () => {
       setSession(service.getSession());
@@ -1609,6 +1656,8 @@ export default function App() {
         return;
       const s = usePlayer.getState();
       if (e.key === "Escape") {
+        if (s.queue[s.index]?.playback.kind === "youtube")
+          usePlayer.setState({ playing: false, status: "paused" });
         setFull(false);
         setQueue(false);
         setMobile(false);
@@ -1863,6 +1912,7 @@ export default function App() {
         </AnimatePresence>
       </main>
       <PlaybackEngine
+        expanded={full}
         onListen={(track, seconds, id) => {
           service
             .listen(track, seconds, id)
@@ -1876,7 +1926,7 @@ export default function App() {
       />
       <AnimatePresence>
         {queue && <Queue close={() => setQueue(false)} />}{" "}
-        {full && <Fullscreen close={() => setFull(false)} />}
+        {full && <Fullscreen close={closeFullscreen} />}
       </AnimatePresence>
       <AnimatePresence>
         {toast && (
@@ -1967,6 +2017,26 @@ export default function App() {
             <button className="primary wide" disabled={busy}>
               {busy ? t("loading") : t(auth)}
             </button>
+            <GoogleLoginButton
+              label={t("continueGoogle")}
+              onCredential={(credential) => {
+                setBusy(true);
+                setAuthError("");
+                service
+                  .send<service.Session>("/auth/google", { credential })
+                  .then((s) => {
+                    service.setSession(s);
+                    setAuth(false);
+                    notify(t("welcome"));
+                  })
+                  .catch((e: unknown) =>
+                    setAuthError(
+                      e instanceof Error ? e.message : t("accountError"),
+                    ),
+                  )
+                  .finally(() => setBusy(false));
+              }}
+            />
             <button
               type="button"
               className="text-button"

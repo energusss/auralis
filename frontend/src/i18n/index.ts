@@ -7,7 +7,7 @@ const pl = {
   library: "Biblioteka",
   favorites: "Polubione",
   recent: "Ostatnio słuchane",
-  playlists: "Twoje playlisty",
+  playlists: "Playlisty",
   create: "Nowa playlista",
   settings: "Ustawienia",
   hello: "Dobrze Cię słyszeć",
@@ -117,6 +117,10 @@ const pl = {
   loadMore: "Wczytaj więcej",
   savedArtists: "Zapisani artyści",
   savedAlbums: "Zapisane albumy",
+  continueGoogle: "Kontynuuj przez Google",
+  videoPlaybackHint:
+    "Odtwarzanie YouTube jest widoczne w widoku Teraz odtwarzane.",
+  videoUnavailable: "Teledysk jest niedostępny. Pokazujemy okładkę albumu.",
 };
 const en: typeof pl = {
   home: "For you",
@@ -125,7 +129,7 @@ const en: typeof pl = {
   library: "Library",
   favorites: "Liked songs",
   recent: "Recently played",
-  playlists: "Your playlists",
+  playlists: "Playlists",
   create: "New playlist",
   settings: "Settings",
   hello: "Good to hear you",
@@ -235,13 +239,14 @@ const en: typeof pl = {
   loadMore: "Load more",
   savedArtists: "Saved artists",
   savedAlbums: "Saved albums",
+  continueGoogle: "Continue with Google",
+  videoPlaybackHint: "YouTube playback is shown in Now Playing.",
+  videoUnavailable: "This video is unavailable. Showing album artwork.",
 };
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: { pl: { translation: pl }, en: { translation: en } },
-    lng: localStorage.getItem("auralis-language") || "pl",
-    fallbackLng: "pl",
-    interpolation: { escapeValue: false },
-  });
+i18n.use(initReactI18next).init({
+  resources: { pl: { translation: pl }, en: { translation: en } },
+  lng: localStorage.getItem("auralis-language") || "pl",
+  fallbackLng: "pl",
+  interpolation: { escapeValue: false },
+});
 export default i18n;

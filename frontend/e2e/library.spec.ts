@@ -89,6 +89,25 @@ test("artist detail, collection, language and fullscreen navigation", async ({
   page,
 }) => {
   await page.goto("/search?q=Kevin");
+  await expect(page.locator(".track-row")).toHaveCount(6);
+  await expect(page.locator(".artist-card")).toContainText("Kevin MacLeod");
+  await page.locator(".track-artist").first().click();
+  await expect(page).toHaveURL(/\/artist\/demo%3Akevin-macleod/);
+  await expect(
+    page.getByRole("heading", { name: "Kevin MacLeod", exact: true }),
+  ).toBeVisible();
+  await page.goto("/search?q=Kevin");
+  await expect(
+    page.getByRole("button", { name: "Playlisty", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "PL", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Playlists", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "EN", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "PL", exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("link", { name: "Kevin MacLeod Kevin MacLeod", exact: true })
     .click();

@@ -96,6 +96,48 @@ describe("authorized audio adapter lifecycle", () => {
     act(() => usePlayer.getState().toggleMute());
     expect(audio.volume).toBe(0);
   });
+  it("keeps official YouTube playback unmounted outside the expanded player", async () => {
+    const youtubeTrack: Track = {
+      ...track("yt:abcdefghijk"),
+      playback: { kind: "youtube", videoId: "abcdefghijk" },
+    };
+    const destroyed = vi.fn();
+    const player = {
+      playVideo: vi.fn(),
+      pauseVideo: vi.fn(),
+      seekTo: vi.fn(),
+      setVolume: vi.fn(),
+      getCurrentTime: () => 0,
+      getDuration: () => 120,
+      getVolume: () => 75,
+      isMuted: () => false,
+      destroy: destroyed,
+    };
+    const create = vi.fn(
+      (_el: HTMLElement, options: { events: { onReady: () => void } }) => {
+        queueMicrotask(options.events.onReady);
+        return player;
+      },
+    );
+    vi.stubGlobal("YT", { Player: create });
+    window.YT = { Player: create } as unknown as NonNullable<typeof window.YT>;
+    const host = document.createElement("div");
+    host.id = "auralis-youtube-host";
+    document.body.appendChild(host);
+    act(() => usePlayer.getState().play([youtubeTrack]));
+    const rendered = render(<PlaybackEngine expanded={false} />);
+    expect(create).not.toHaveBeenCalled();
+    rendered.rerender(<PlaybackEngine expanded />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(create).toHaveBeenCalledOnce();
+    rendered.rerender(<PlaybackEngine expanded={false} />);
+    expect(destroyed).toHaveBeenCalledOnce();
+    host.remove();
+    delete window.YT;
+  });
   it("stops and releases media when the queue is cleared", () => {
     const { audio } = start();
     act(() => usePlayer.getState().clear());

@@ -77,8 +77,10 @@ function youtubeApi(): Promise<YTApi> {
 }
 export function PlaybackEngine({
   onListen,
+  expanded = false,
 }: {
   onListen?: (track: Track, seconds: number, eventId: string) => void;
+  expanded?: boolean;
 }) {
   const { t } = useTranslation();
   const track = usePlayer((s) => s.queue[s.index]),
@@ -186,16 +188,22 @@ export function PlaybackEngine({
         audio.src = track.playback.url;
         ready();
       } else fail();
-    } else if (track.playback.videoId) {
+    } else if (
+      track.playback.kind === "youtube" &&
+      expanded &&
+      track.playback.videoId
+    ) {
       youtubeApi()
         .then((YT) => {
-          if (!alive || !host.current) return;
-          host.current.replaceChildren();
+          const target = document.getElementById("auralis-youtube-host");
+          if (!alive || !target) return;
+          host.current = target as HTMLDivElement;
+          target.replaceChildren();
           const element = document.createElement("div");
           host.current.appendChild(element);
           const youtube = new YT.Player(element, {
-            width: 360,
-            height: 220,
+            width: 640,
+            height: 360,
             videoId: track.playback.videoId!,
             playerVars: {
               playsinline: 1,
@@ -252,6 +260,10 @@ export function PlaybackEngine({
           };
         })
         .catch(fail);
+    } else if (track.playback.kind === "youtube") {
+      return () => {
+        alive = false;
+      };
     } else fail();
     const timer = window.setInterval(() => {
       if (!local || !alive) return;
@@ -300,7 +312,7 @@ export function PlaybackEngine({
       local?.destroy();
     };
     // Same-id metadata and queue reordering must not restart the current track.
-  }, [track?.id, loadId]);
+  }, [track?.id, loadId, expanded]);
   useEffect(() => {
     syncPlayback();
   }, [playing]);
@@ -346,28 +358,5 @@ export function PlaybackEngine({
         } catch {}
     };
   }, []);
-  return track?.playback.kind === "youtube" ? (
-    <aside
-      className="youtube-player"
-      aria-label="YouTube"
-      style={{
-        position: "fixed",
-        right: 16,
-        bottom: 126,
-        width: 360,
-        maxWidth: "calc(100vw - 32px)",
-        zIndex: 60,
-        borderRadius: 16,
-        overflow: "hidden",
-        background: "#080a12",
-        boxShadow: "0 12px 48px #0008",
-      }}
-    >
-      <div ref={host} style={{ minHeight: 220 }} />
-      <div style={{ padding: "6px 12px", fontSize: 11, color: "#94a3b8" }}>
-        YouTube ·{" "}
-        {t("officialPlayer", { defaultValue: "Oficjalny odtwarzacz" })}
-      </div>
-    </aside>
-  ) : null;
+  return null;
 }
