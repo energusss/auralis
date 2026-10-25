@@ -46,7 +46,7 @@ public class InternetArchiveAudioProviderTests
         Assert.Empty(await provider.SearchAsync("Directionless EP", CancellationToken.None));
         var resolution = await provider.ResolveAsync("ia:DirectionlessEP:b35aec4f8033cb9d", CancellationToken.None);
         Assert.Equal("unavailable", resolution.Availability);
-        Assert.Equal("not-found-or-unlicensed", resolution.ErrorCategory);
+        Assert.Equal("license-not-eligible", resolution.ErrorCategory);
         Assert.Null(resolution.Url);
     }
 

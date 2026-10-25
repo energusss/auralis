@@ -166,7 +166,16 @@ public sealed class InternetArchiveAudioProvider(HttpClient http, IMemoryCache c
 
     private static int Duration(string value)
     {
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)) return Math.Max(0, (int)seconds);
+        var fields = value.Split(':');
+        if (fields.Length == 2 && int.TryParse(fields[0], NumberStyles.None, CultureInfo.InvariantCulture, out var minutes)
+            && int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture, out var sec) && sec is >= 0 and < 60)
+            return Math.Max(0, minutes * 60 + sec);
+        if (fields.Length == 3 && int.TryParse(fields[0], NumberStyles.None, CultureInfo.InvariantCulture, out var hours)
+            && int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture, out var minutePart)
+            && int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out var secondPart)
+            && minutePart is >= 0 and < 60 && secondPart is >= 0 and < 60)
+            return Math.Max(0, hours * 3600 + minutePart * 60 + secondPart);
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numericSeconds)) return Math.Max(0, (int)numericSeconds);
         if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var time)) return Math.Max(0, (int)time.TotalSeconds);
         return 0;
     }
