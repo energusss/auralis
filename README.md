@@ -7,7 +7,7 @@ A React/TypeScript and ASP.NET Core music application with a dark glass interfac
 ## Music sources
 
 - The credential-free selection contains six real Kevin MacLeod tracks streamed from Incompetech, with Creative Commons attribution. Internet access is still required for these audio URLs. See [music credits](THIRD_PARTY_NOTICES.md).
-- Set `YOUTUBE_API_KEY` to enable official YouTube Data API metadata discovery. YouTube playback uses the visible official iframe, preserving provider restrictions and advertisements.
+- Set `YOUTUBE_API_KEY` to enable official YouTube Data API metadata discovery. YouTube playback opens the expanded Now Playing view with the visible official iframe; closing that view pauses the YouTube source. The compact Auralis controls continue to manage seeking, volume and queue state while the iframe is shown.
 - YouTube channels and playlists are not guaranteed to represent musical artists and albums. Complete YouTube Music discographies, unauthorized extraction, ad bypass, and guaranteed gapless audio are not provided.
 - The selection is curated, not a measured popularity chart. The collection title is an Auralis editorial grouping, not a claimed commercial album.
 - [Provider investigation](docs/PROVIDER_RESEARCH.md) explains the six reviewed open-source implementations and the chosen boundary.
@@ -56,6 +56,11 @@ Guest libraries are stored in this browser's local storage. Registered accounts 
 | `ASPNETCORE_URLS` | Backend binding; default local helper configuration is port 5080 |
 | `FRONTEND_ORIGINS` | Comma-separated allowed browser origins |
 | `YOUTUBE_API_KEY` | Optional server-only key for YouTube metadata |
+| `GOOGLE_CLIENT_ID` | Google OAuth Web client ID validated by the backend |
+
+### Google sign-in setup
+
+In [Google Cloud Console](https://console.cloud.google.com/), create or select a project, configure the OAuth consent screen, and create an OAuth client with application type **Web application**. Add the exact Auralis origin to **Authorized JavaScript origins** (local development: `http://localhost:5173`; production: your HTTPS origin). Google Identity Services returns an ID token to the browser; the browser posts it to Auralis, and the API verifies Google's signature keys, issuer, audience, expiry, and verified email before issuing the normal Auralis session. There is no client secret in the frontend. Set the same client ID in backend `.env` as `GOOGLE_CLIENT_ID` and in `frontend/.env.local` as `VITE_GOOGLE_CLIENT_ID`, then restart both services. An existing email account is linked only when Google marks its email verified; accounts are looked up by Google's stable subject on later sign-ins. Google sign-in requires network access to Google Identity Services and Google's OIDC metadata. Existing password accounts remain usable.
 
 ASP.NET does **not** load `.env` by itself; use the helper or export the variables manually. `DATABASE_URL` is a connection string, not a `postgres://` URI. Only nonsecret frontend configuration belongs in `frontend/.env.local`; `VITE_API_URL` can point to a different API base ending in `/api`. Vite variables are public in the built JavaScript.
 
@@ -80,7 +85,7 @@ The production frontend output is `frontend/dist`. It needs a web server with SP
 
 ## Git history and publication
 
-New commits use actual creation timestamps. No historical dates were assigned. There was no existing Git history at continuation; accumulated work was committed as meaningful source checkpoints. See `DEVELOPMENT_LOG.md` for execution details. `auralis-history.bundle`, when included with the ZIP, preserves the local Git history without packaging an entire `.git` directory.
+New commits use actual creation timestamps. No historical dates were assigned. The Auralis source history is preserved; this incremental update adds new commits with actual creation timestamps. See `DEVELOPMENT_LOG.md` for execution details. `auralis-history.bundle`, when included with the ZIP, preserves the local Git history without packaging an entire `.git` directory.
 
 The complete source is published privately at **https://github.com/energusss/auralis**. Clone it while authenticated as an authorized GitHub user:
 

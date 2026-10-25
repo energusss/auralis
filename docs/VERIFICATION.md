@@ -48,3 +48,18 @@ See `README.md` for exact local startup and `DEVELOPMENT_LOG.md` for execution a
 Publication completed after the user signed in to GitHub. The original history was transported in a verified Git bundle; the connected GitHub integration set `main` to the exact original commit. The temporary bootstrap is archived on `publication/bootstrap`. Subsequent commits use actual creation timestamps.
 
 Published-code CI: https://github.com/energusss/auralis/actions/runs/40219895569 — frontend and backend builds, 15 frontend tests, 12 backend tests, 4 Playwright tests and the PostgreSQL migration/HTTP journey passed.
+
+## v1.1 incremental update — 25 October 2026
+
+| Check | Result | Evidence / scope |
+|---|---|---|
+| Frontend TypeScript and production build | PASS | `npm run build`; favicon appears in `frontend/dist` |
+| Frontend unit/component tests | PASS | 18 tests, including non-playable artist guards, category-preserving search, and official YouTube iframe mount/destroy lifecycle |
+| Backend API build | PASS | .NET 8, 0 warnings and 0 errors |
+| Backend tests | PASS | 14 xUnit tests, including YouTube all-category classification and Google sign-in disabled-state behavior |
+| Git diff hygiene | PASS | `git diff --check` |
+| Playwright locally | BLOCKED | Four desktop/mobile specs attempted. No Chromium executable was present; browser download returned a truncated archive in this Work environment. The committed CI installs Chromium and will provide an independent run. |
+| Google OAuth live roundtrip | NOT RUN | No Google OAuth client ID was supplied. The secure token-validation and account-linking path is implemented; configure the matching public/client IDs as shown in README. |
+| Live YouTube iframe | NOT RUN | No YouTube Data API credential/video was configured. The official iframe remains visible and interactive in expanded Now Playing; close pauses playback. |
+
+Changes add stable typed artist/channel discovery, artist profile links from track rows and current playback, the localized “Playlisty / Playlists” search label, AURALIS favicon, expanded-only official YouTube video presentation, and Google Identity Services authentication backed by verified Google OIDC tokens. Existing local password login and library schema are retained; the new nullable unique Google subject is added by an EF migration.

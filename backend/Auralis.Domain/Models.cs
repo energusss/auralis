@@ -10,7 +10,7 @@ public record MusicPlaylist(string Id, string Name, string Artwork, IReadOnlyLis
 public record SearchResult(IReadOnlyList<Track> Tracks, IReadOnlyList<ArtistSummary> Artists, IReadOnlyList<AlbumSummary> Albums, IReadOnlyList<MusicPlaylist> Playlists, string? NextCursor = null);
 public record HomeResult(IReadOnlyList<Track> Featured, IReadOnlyList<Track> Trending, IReadOnlyList<AlbumSummary> NewReleases, IReadOnlyList<ArtistSummary> Artists, IReadOnlyList<Track> Recommendations, string ProviderStatus);
 public class User {
- public Guid Id {get;set;} = Guid.NewGuid(); public string Email {get;set;} = ""; public string DisplayName {get;set;} = ""; public string PasswordHash {get;set;} = ""; public DateTimeOffset CreatedAt {get;set;} = DateTimeOffset.UtcNow;
+ public Guid Id {get;set;} = Guid.NewGuid(); public string Email {get;set;} = ""; public string DisplayName {get;set;} = ""; public string PasswordHash {get;set;} = ""; public string? GoogleSubject {get;set;} public DateTimeOffset CreatedAt {get;set;} = DateTimeOffset.UtcNow;
  public string Language {get;set;} = "pl"; public string Theme {get;set;} = "dark"; public string Accent {get;set;} = "#8b5cf6";
 }
 public class RefreshToken { public Guid Id {get;set;} = Guid.NewGuid(); public Guid UserId {get;set;} public string Hash {get;set;} = ""; public DateTimeOffset ExpiresAt {get;set;} public bool Revoked {get;set;} public Guid FamilyId {get;set;} = Guid.NewGuid(); }

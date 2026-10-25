@@ -182,3 +182,13 @@ BEGIN
 END $EF$;
 COMMIT;
 
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025193043_AddGoogleIdentity') THEN
+        ALTER TABLE "Users" ADD COLUMN "GoogleSubject" character varying(255);
+        CREATE UNIQUE INDEX "IX_Users_GoogleSubject" ON "Users" ("GoogleSubject");
+        INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+        VALUES ('20261025193043_AddGoogleIdentity', '8.0.22');
+    END IF;
+END $EF$;

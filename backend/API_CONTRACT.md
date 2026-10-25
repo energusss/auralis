@@ -7,7 +7,7 @@ GET /music/search?q=&type=all|songs|artists|albums|playlists|videos&cursor= -> `
 GET /music/home -> `{featured:Track[],trending:Track[],newReleases:AlbumSummary[],artists:ArtistSummary[],recommendations:Track[],providerStatus:string}`.
 GET /music/tracks/{id}; /music/artists/{id}; /music/albums/{id}; /music/playlists/{id}; /music/recommendations.
 
-POST /auth/register `{email,password,displayName}`; POST /auth/login `{email,password}` -> `{accessToken,refreshToken,user:{id,email,displayName}}`.
+POST /auth/register `{email,password,displayName}`; POST /auth/login `{email,password}`; POST /auth/google `{credential}` -> `{accessToken,refreshToken,user:{id,email,displayName}}`. Google credential must be a Google Identity Services ID token. The API validates signature, issuer, configured audience, expiration and `email_verified` before looking up the stable Google `sub`. A verified matching email may be linked to an existing account; unverified email claims are rejected.
 POST /auth/refresh `{refreshToken}` -> same. POST /auth/logout `{refreshToken}`. GET /auth/me -> user.
 GET /library -> `{favorites:Track[],savedArtists:ArtistSummary[],savedAlbums:AlbumSummary[],playlists:Playlist[],history:History[]}`.
 PUT /library/favorites/{trackId} Track body; DELETE same. PUT /library/artists/{id} ArtistSummary; DELETE same. PUT /library/albums/{id} AlbumSummary; DELETE same.
