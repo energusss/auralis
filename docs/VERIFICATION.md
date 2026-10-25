@@ -45,6 +45,20 @@ Guest library data persists in browser storage. Registered-account playlists/fav
 - Windows PowerShell and Docker Compose instructions are provided and reviewed; they were not executed on a Windows machine here.
 - Vite reports a main JavaScript chunk of approximately 585 kB before gzip; bundle splitting remains an optimization opportunity.
 
+## v2.1 YouTube Music playback feasibility — 25 October 2026
+
+| Check | Result | Evidence / scope |
+|---|---|---|
+| SimpMusic source and pinned `core` submodule review | PASS | Inspected player/queue service, player response scraper, cached format repository, expiry refresh, Android/JVM extractors, 403 fallback and GPL-3.0 license; source links and findings in `PROVIDER_RESEARCH.md`. Reference application was not built or run. |
+| YouTube supported-playback policy review | PASS | Official policy disallows separating audio from video and background playback through YouTube API clients; the official embedded player remains the supported way to play the exact video. |
+| YouTube Music direct audio resolution in Auralis | NOT IMPLEMENTED | Data API search results remain metadata-only. No `googlevideo` URL extraction, hidden iframe, proxy, signature/DRM bypass or downloader code was added. |
+| Frontend automated tests | PASS | Local `npm test`: 17 tests across 3 files. |
+| Frontend production build | PASS | Local `npm run build`; TypeScript check and Vite build succeeded. Existing ~587 kB minified bundle warning remains. |
+| Backend build and tests in this workspace | BLOCKED | .NET SDK is not installed (`dotnet: command not found`). The unchanged backend and frontend code passed GitHub Actions run [40232423328](https://github.com/energusss/auralis/actions/runs/40232423328), including backend tests, PostgreSQL migration/API checks, frontend tests and Playwright. |
+| Real YouTube Music playback | NOT AVAILABLE / NOT VERIFIED | No authorized audio source exists for these YouTube metadata records. Prior real-stream checks cover the separate Kevin MacLeod/Incompetech CC BY catalog, not YouTube tracks. No Jamendo or Apple Music credentials are configured. |
+
+No Auralis application code or UI was changed in v2.1: the requested background audio-only YouTube playback cannot be implemented with the reviewed official YouTube interfaces. See `PROVIDER_RESEARCH.md` for the precise SimpMusic resolver path, policy boundary, and alternative authorized provider options.
+
 See `README.md` for exact local startup and `DEVELOPMENT_LOG.md` for execution and timestamp details.
 
 Publication completed after the user signed in to GitHub. The original history was transported in a verified Git bundle; the connected GitHub integration set `main` to the exact original commit. The temporary bootstrap is archived on `publication/bootstrap`. Subsequent commits use actual creation timestamps.
