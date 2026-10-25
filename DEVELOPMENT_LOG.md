@@ -27,3 +27,5 @@ Docker and PostgreSQL were absent. Installing PostgreSQL was blocked by environm
 ## GitHub
 
 The connected account was rechecked as `energusss`; the previous account is not the destination. `energusss/auralis` returned 404. The connector has content/commit operations but no repository-creation operation. Browser creation reaches a GitHub sign-in page. Publication requires that separate authentication (or the included authenticated GitHub CLI publishing script). Final synchronization status is recorded in `docs/VERIFICATION.md`.
+
+The final browser-authentication inspection was rejected by automatic security review because it indicated `accounts.google.com`, outside the authorized GitHub origin. No attempt was made to bypass that review. Source delivery and all unaffected verification were completed.

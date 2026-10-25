@@ -21,7 +21,7 @@
 | Playwright CLI suite | NOT RUN | Desktop/mobile specifications included for Windows/CI; interactive browser checks above were executed through the available browser controller |
 | Official YouTube external playback/search | NOT RUN | No `YOUTUBE_API_KEY` supplied; iframe adapter and API provider implemented, live quota/region/embed behavior unverified |
 | GitHub authentication | PASS | Connector returned login `energusss` |
-| GitHub repository synchronization | BLOCKED | Repository returned 404, connector lacks creation operation, browser requires separate GitHub sign-in |
+| GitHub repository synchronization | BLOCKED | Repository returned 404, connector lacks creation operation, browser requires separate GitHub sign-in; automatic review blocked the Google-account origin during authentication inspection |
 
 ## Implemented behavior
 
@@ -44,3 +44,5 @@ Guest library data persists in browser storage. Registered-account playlists/fav
 - Vite reports a main JavaScript chunk of approximately 585 kB before gzip; bundle splitting remains an optimization opportunity.
 
 See `README.md` for exact local startup and `DEVELOPMENT_LOG.md` for execution and timestamp details.
+
+Publication continuation: create a private `energusss/auralis` repository and grant the connected GitHub integration access, or run `scripts/publish-github.ps1` using an authenticated local `gh` session. No remote repository or push is claimed.
