@@ -21,9 +21,14 @@ test("guest can search, like, create and reorder a persistent playlist", async (
     .getByRole("button", { name: "Polubione", exact: true })
     .click();
   await navigation(page, "Biblioteka");
+  await expect(
+    page
+      .locator("main")
+      .getByRole("heading", { name: "Biblioteka", exact: true }),
+  ).toBeVisible();
   await page
+    .locator("main")
     .getByRole("button", { name: "Nowa playlista", exact: true })
-    .last()
     .click();
   await page
     .getByRole("textbox", { name: "Nazwa playlisty" })
@@ -51,7 +56,15 @@ test("guest can search, like, create and reorder a persistent playlist", async (
   await navigation(page, "Browser test");
   const handle = page.getByLabel("Reorder", { exact: true }).first();
   await handle.press("Space");
+  await expect(handle).toHaveAttribute("aria-pressed", "true");
   await handle.press("ArrowDown");
+  await expect(
+    page
+      .locator('[role="status"]')
+      .filter({
+        hasText: "was moved over droppable area demo:monkeys-spinning-monkeys",
+      }),
+  ).toBeVisible();
   await handle.press("Space");
   await expect(page.locator(".track-main").first()).toContainText(
     "Monkeys Spinning Monkeys",
